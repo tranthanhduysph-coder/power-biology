@@ -1,81 +1,80 @@
 /* --- TỔNG QUÁT & HÌNH NỀN --- */
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #f0f8ff; /* Màu nền xanh da trời rất nhạt */
-    color: #1D3557; /* Màu chữ chính - xanh đậm */
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    background-color: #eaf4f4;
+    color: #333;
+    padding-top: 70px; /* Thêm khoảng đệm cho navbar cố định */
 }
 
-.container {
+/* --- THANH ĐIỀU HƯỚNG --- */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* --- BỐ CỤC CHUNG --- */
+.container, .chat-layout {
     width: 100%;
-    max-width: 1400px;
-    padding: 20px;
+    max-width: 95%; /* Mở rộng để chứa 3 cột */
+    margin-left: auto;
+    margin-right: auto;
 }
 
-/* --- TRANG ĐĂNG NHẬP (FORM CONTAINER) --- */
+/* --- TRANG ĐĂNG NHẬP --- */
 .form-container {
     background-color: #ffffff;
     padding: 40px;
     border-radius: 15px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     max-width: 500px;
-    margin: auto;
 }
 
-.form-container .form-control {
-    border-radius: 8px;
-    padding: 12px;
+/* --- GIAO DIỆN CHAT 3 CỘT --- */
+.chat-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px; /* 3 cột: trái - giữa - phải */
+    gap: 20px;
+    height: calc(100vh - 100px); /* Chiều cao tối đa */
 }
 
-.form-container .btn-primary {
-    background-color: #1D3557;
-    border: none;
-    padding: 12px;
-    font-weight: bold;
-    border-radius: 8px;
-    transition: background-color 0.3s;
-}
-
-.form-container .btn-primary:hover {
-    background-color: #457B9D;
-}
-
-/* --- GIAO DIỆN CHAT --- */
-.chat-container {
-    width: 100%;
-    max-width: 900px;
-    height: 90vh;
+.side-panel {
     background-color: #ffffff;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 0.9em;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.side-panel h4 {
+    color: #1D3557;
+    border-bottom: 2px solid #A8DADC;
+    padding-bottom: 10px;
+    margin-top: 0;
+    font-size: 1.1em;
+}
+
+.side-panel .survey-btn {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.right-panel h4 {
+    color: #E63946; /* Màu đỏ cảnh báo */
+}
+
+.main-chat-panel {
     display: flex;
     flex-direction: column;
+    height: 100%;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     padding: 20px;
-    margin: auto;
-}
-
-.chat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #A8DADC; /* Màu xanh nhạt */
-}
-
-.chat-header h3 {
-    margin: 0;
-    color: #1D3557;
 }
 
 .chat-window {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 20px 10px;
+    padding: 10px;
 }
 
 .message {
@@ -84,7 +83,6 @@ body {
     line-height: 1.5;
     display: flex;
     align-items: flex-end;
-    /* SỬA LỖI QUAN TRỌNG: Đảm bảo xuống dòng đúng cách */
     white-space: pre-wrap; 
 }
 
@@ -98,24 +96,22 @@ body {
     flex-direction: row;
 }
 
-/* Định dạng nội dung tin nhắn */
 .message div {
     padding: 12px 18px;
     border-radius: 20px;
 }
 
 .message.user div {
-    background-color: #1D3557; /* Xanh đậm */
+    background-color: #007bff;
     color: white;
     border-bottom-right-radius: 5px;
 }
 
 .message.assistant div {
-    background-color: #f1f0f0;
-    color: #1D3557;
+    background-color: #e9ecef;
+    color: #212529;
     border-bottom-left-radius: 5px;
 }
-
 
 .chat-input-form {
     display: flex;
@@ -123,27 +119,10 @@ body {
     border-top: 1px solid #eee;
 }
 
-.chat-input-form .form-control {
-    border-radius: 20px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-}
-.chat-input-form .form-control:focus {
-    border-color: #457B9D;
-    box-shadow: 0 0 0 0.2rem rgba(69, 123, 157, 0.25);
-}
-
-.chat-input-form .btn {
-    border-radius: 20px;
-    background-color: #1D3557;
-    border: none;
-}
-
-/* --- TRANG ADMIN DASHBOARD --- */
+/* --- TRANG ADMIN --- */
 .table {
-    vertical-align: middle;
+    background-color: #fff;
 }
-
-.card-header h4 {
-    margin-bottom: 0;
+.card {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
