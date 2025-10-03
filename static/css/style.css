@@ -173,3 +173,186 @@ body {
     flex-direction: column;
     justify-content: center;
 }
+/* --- TRANG CHATBOT --- */
+/* Bố cục 3 cột cho trang chat */
+.chat-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px; /* Cột trái, cột giữa (chat), cột phải */
+    gap: 20px;
+    height: calc(100vh - 100px); /* Chiều cao tối đa, trừ navbar */
+    margin-top: 20px;
+}
+
+/* Panel bên cạnh (trái và phải) */
+.side-panel {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 0.9em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.side-panel h4 {
+    color: #1D3557; /* Màu xanh đậm cho tiêu đề */
+    border-bottom: 2px solid #A8DADC; /* Đường kẻ dưới */
+    padding-bottom: 10px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+}
+
+.side-panel .survey-btn {
+    margin-top: auto; /* Đẩy nút khảo sát xuống dưới cùng */
+    width: 100%;
+    padding: 10px;
+    font-weight: bold;
+}
+
+.right-panel h4 {
+    color: #E63946; /* Màu đỏ cho tiêu đề cảnh báo */
+}
+
+.right-panel p {
+    color: #555;
+}
+
+/* Khu vực chat chính */
+.main-chat-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+
+.chat-window {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px; /* Khoảng trống cho scrollbar */
+}
+
+/* Thanh cuộn tùy chỉnh cho cửa sổ chat */
+.chat-window::-webkit-scrollbar {
+    width: 8px;
+}
+.chat-window::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+.chat-window::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+.chat-window::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+
+/* Cấu trúc từng tin nhắn */
+.message {
+    margin-bottom: 15px;
+    max-width: 85%; /* Giới hạn chiều rộng tin nhắn */
+    line-height: 1.6;
+    display: flex; /* Dùng flexbox để căn chỉnh icon và nội dung */
+    align-items: flex-start; /* Căn trên cùng */
+    word-wrap: break-word; /* Ngắt từ dài */
+    white-space: pre-wrap; /* Giữ định dạng khoảng trắng và xuống dòng */
+}
+
+/* Icon cho người gửi */
+.message .icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%; /* Hình tròn */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2em;
+    color: white;
+    flex-shrink: 0; /* Không co lại */
+    margin-top: 5px; /* Căn chỉnh icon với nội dung */
+}
+
+.message.user {
+    margin-left: auto; /* Đẩy tin nhắn của người dùng sang phải */
+    flex-direction: row-reverse; /* Icon bên phải, nội dung bên trái */
+}
+
+.message.user .icon {
+    background-color: #007bff; /* Màu xanh cho icon người dùng */
+    margin-left: 10px;
+}
+
+.message.assistant {
+    margin-right: auto; /* Đẩy tin nhắn của chatbot sang trái */
+    flex-direction: row; /* Icon bên trái, nội dung bên phải */
+}
+
+.message.assistant .icon {
+    background-color: #6c757d; /* Màu xám cho icon chatbot */
+    margin-right: 10px;
+}
+
+/* Nội dung tin nhắn */
+.message div.message-content {
+    padding: 12px 18px;
+    border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); /* Đổ bóng nhẹ */
+}
+
+.message.user div.message-content {
+    background-color: #007bff; /* Nền xanh cho tin nhắn người dùng */
+    color: white;
+    border-bottom-right-radius: 5px; /* Bo góc dưới phải ít hơn */
+}
+
+.message.assistant div.message-content {
+    background-color: #e9ecef; /* Nền xám nhạt cho tin nhắn chatbot */
+    color: #212529;
+    border-bottom-left-radius: 5px; /* Bo góc dưới trái ít hơn */
+}
+
+/* Form nhập liệu chat */
+.chat-input-form {
+    display: flex;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    gap: 10px; /* Khoảng cách giữa input và nút */
+}
+
+.chat-input-form .form-control {
+    flex-grow: 1;
+    border-radius: 20px;
+    padding: 10px 15px;
+}
+
+.chat-input-form .btn-primary {
+    border-radius: 20px;
+    padding: 10px 20px;
+}
+
+/* Các phần khác (Đã có sẵn, giữ nguyên hoặc chỉnh sửa nếu cần) */
+/* ... (các CSS khác của bạn) ... */
+
+/* Media queries cho thiết bị nhỏ hơn (ví dụ: tắt 3 cột) */
+@media (max-width: 992px) {
+    .chat-layout {
+        grid-template-columns: 1fr; /* Chuyển sang bố cục 1 cột */
+        gap: 15px;
+    }
+    .side-panel {
+        display: none; /* Ẩn các panel bên cạnh trên thiết bị nhỏ */
+    }
+    .login-container {
+        flex-direction: column;
+        max-width: 500px; /* Giới hạn chiều rộng cho thiết bị nhỏ */
+    }
+    .login-info-panel, .login-form-panel {
+        width: 100%;
+        padding: 25px;
+    }
+}

@@ -13,7 +13,14 @@
         <div id="chat-window" class="chat-window">
             {% for message in chat_history %}
                 <div class="message {{ message.sender }}">
-                    <div>{{ message.content | safe }}</div>
+                    <div class="icon">
+                        {% if message.sender == 'user' %}
+                            <i class="fas fa-user"></i> {# Icon cho người dùng #}
+                        {% else %}
+                            <i class="fas fa-robot"></i> {# Icon cho chatbot #}
+                        {% endif %}
+                    </div>
+                    <div class="message-content">{{ message.content | safe }}</div>
                 </div>
             {% endfor %}
         </div>
@@ -30,42 +37,63 @@
 </div>
 
 <script>
-    // Phần JavaScript giữ nguyên như cũ, không cần thay đổi
+    // Phần JavaScript giữ nguyên như cũ
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
         const chatWindow = document.getElementById('chat-window');
         chatWindow.scrollTop = chatWindow.scrollHeight;
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const message = userInput.value.trim();
             if (message === '') return;
+
             appendMessage(message, 'user');
             userInput.value = '';
-            const typingIndicator = appendMessage('...', 'assistant');
+
+            const typingIndicator = appendMessage('...', 'assistant'); // Hiển thị "..." cho tin nhắn chatbot
+
             try {
                 const response = await fetch("{{ url_for('main.ask') }}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: message })
                 });
-                if (!response.ok) { throw new Error('Network response was not ok'); }
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
                 const data = await response.json();
-                typingIndicator.innerHTML = data.response;
+                typingIndicator.querySelector('.message-content').innerHTML = data.response; // Cập nhật nội dung tin nhắn
             } catch (error) {
                 console.error('Error:', error);
-                typingIndicator.innerHTML = 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.';
+                typingIndicator.querySelector('.message-content').innerHTML = 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.';
             }
         });
+
         function appendMessage(text, sender) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message', sender);
+
+            const iconElement = document.createElement('div');
+            iconElement.classList.add('icon');
+            if (sender === 'user') {
+                iconElement.innerHTML = '<i class="fas fa-user"></i>';
+            } else {
+                iconElement.innerHTML = '<i class="fas fa-robot"></i>';
+            }
+            messageElement.appendChild(iconElement);
+
             const contentDiv = document.createElement('div');
+            contentDiv.classList.add('message-content');
             contentDiv.innerHTML = text;
             messageElement.appendChild(contentDiv);
+
             chatWindow.appendChild(messageElement);
             chatWindow.scrollTop = chatWindow.scrollHeight;
-            return contentDiv;
+            return messageElement; // Trả về toàn bộ phần tử tin nhắn để cập nhật sau này
         }
     });
 </script>
