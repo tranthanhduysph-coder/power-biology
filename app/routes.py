@@ -20,7 +20,6 @@ def admin_required(f):
 
 # --- HÀM GỌI ASSISTANT ---
 def get_assistant_response(user_message, bot_type):
-    # ... (Hàm này giữ nguyên như cũ, không thay đổi)
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
         if not api_key: return "LỖI CẤU HÌNH: OPENAI_API_KEY không được thiết lập."
@@ -62,7 +61,6 @@ def login():
     return render_template('login.html', form=form)
 
 def chatbot_view(template_name):
-    # ... (Hàm này giữ nguyên như cũ, không thay đổi)
     bot_type = template_name.split('_')[1].split('.')[0]
     if not current_user.is_admin and current_user.bot_type != bot_type:
         flash("Bạn không có quyền truy cập chatbot này.", "danger")
@@ -78,7 +76,6 @@ def chatbot_view(template_name):
 @main.route('/ask', methods=['POST'])
 @login_required
 def ask():
-    # ... (Hàm này giữ nguyên như cũ, không thay đổi)
     user_message_content = request.json.get('message')
     session_id = session.get('chat_session_id')
     user_msg = Message(sender='user', content=user_message_content, author=current_user, session_id=session_id)
@@ -120,7 +117,6 @@ def chatbot_gofai():
 @main.route('/reset_session')
 @login_required
 def reset_session():
-    # ... (Hàm này giữ nguyên như cũ, không thay đổi)
     new_session_id = str(uuid.uuid4())
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
@@ -139,7 +135,6 @@ def reset_session():
 @main.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
-    # ... (Hàm này giữ nguyên như cũ, không thay đổi)
     form = ChangePasswordForm()
     if form.validate_on_submit():
         if current_user.check_password(form.current_password.data):
@@ -151,7 +146,7 @@ def change_password():
             flash('Mật khẩu hiện tại không đúng.', 'danger')
     return render_template('change_password.html', form=form)
 
-# --- CÁC ROUTE CHO ADMIN (PHẦN BỔ SUNG QUAN TRỌNG) ---
+# --- CÁC ROUTE CHO ADMIN (ĐÃ HOÀN THIỆN) ---
 
 @main.route('/admin', methods=['GET', 'POST'])
 @login_required
@@ -161,13 +156,43 @@ def admin_dashboard():
     upload_form = UploadCSVForm()
     reset_form = ResetPasswordForm()
     
-    if user_form.validate_on_submit() and 'username' in request.form:
-        # Xử lý thêm người dùng
-        pass
+    # === PHẦN SỬA LỖI QUAN TRỌNG: THÊM LOGIC XỬ LÝ FORM ===
+    if user_form.validate_on_submit() and user_form.submit.data:
+        existing_user = User.query.filter_by(username=user_form.username.data).first()
+        if existing_user is None:
+            new_user = User(
+                username=user_form.username.data,
+                bot_type=user_form.bot_type.data,
+                is_admin=user_form.is_admin.data
+            )
+            new_user.set_password(user_form.password.data)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Thêm người dùng mới thành công!', 'success')
+        else:
+            flash('ID học sinh đã tồn tại.', 'danger')
+        return redirect(url_for('main.admin_dashboard'))
 
-    if upload_form.validate_on_submit() and 'csv_file' in request.files:
-        # Xử lý upload CSV
-        pass
+    if upload_form.validate_on_submit() and upload_form.submit.data:
+        try:
+            stream = io.StringIO(upload_form.csv_file.data.stream.read().decode("UTF8"), newline=None)
+            csv_reader = csv.reader(stream)
+            next(csv_reader, None)  # Bỏ qua dòng header
+            count = 0
+            for row in csv_reader:
+                user_id, password, bot_type = row
+                if not User.query.filter_by(username=user_id.strip()).first():
+                    new_user = User(username=user_id.strip(), bot_type=bot_type.strip().lower())
+                    new_user.set_password(password.strip())
+                    db.session.add(new_user)
+                    count += 1
+            db.session.commit()
+            flash(f'Thêm thành công {count} tài khoản từ file CSV!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Lỗi xử lý file CSV: {e}', 'danger')
+        return redirect(url_for('main.admin_dashboard'))
+    # === KẾT THÚC PHẦN SỬA LỖI ===
         
     users = User.query.filter_by(is_admin=False).all()
     return render_template('admin_dashboard.html', users=users, user_form=user_form, upload_form=upload_form, reset_form=reset_form)
