@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Log Biến của {{ student.username }}{% endblock %}
+{% block content %}
+    <h2 class="mb-3">Log Biến của: {{ student.username }}</h2>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mb-4">&larr; Quay lại Dashboard</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Thời gian</th>
+                <th>Session ID</th>
+                <th>Tên Biến</th>
+                <th>Giá trị</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ log.session_id[:8] }}...</td>
+                <td>{{ log.variable_name }}</td>
+                <td>{{ log.variable_value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

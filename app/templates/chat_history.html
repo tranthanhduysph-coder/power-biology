@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch sử chat của {{ student.username }}{% endblock %}
+
+{% block content %}
+    <h2 class="mb-3">Lịch sử chat của: {{ student.username }}</h2>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mb-4">&larr; Quay lại Dashboard</a>
+
+    <div class="history-container">
+        {% if not messages %}
+            <p>Chưa có lịch sử trò chuyện nào cho học sinh này.</p>
+        {% else %}
+            {% for message in messages %}
+                
+                {% if loop.first or message.session_id != loop.previtem.session_id %}
+                    <div class="session-divider">
+                        <hr>
+                        <p class="text-muted text-center">Phiên làm việc lúc: {{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        <hr>
+                    </div>
+                {% endif %}
+
+                <div class="message {{ message.sender }}">
+                    <div class="message-content">
+                        {{ message.content.replace('\n', '<br>') | safe }}
+                    </div>
+                    <div class="message-timestamp">
+                        {{ message.timestamp.strftime('%H:%M') }}
+                    </div>
+                </div>
+
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <style>
+        .history-container { max-width: 800px; margin: auto; }
+        .message { display: flex; max-width: 80%; margin-bottom: 10px; }
+        .message-content { padding: 10px 15px; border-radius: 18px; line-height: 1.5; }
+        .message-timestamp { font-size: 0.75rem; color: #888; align-self: flex-end; margin: 0 5px; }
+        .user { flex-direction: row-reverse; margin-left: auto; }
+        .user .message-content { background-color: #007bff; color: white; border-bottom-right-radius: 4px; }
+        .assistant { flex-direction: row; margin-right: auto; }
+        .assistant .message-content { background-color: #e9e9eb; color: black; border-bottom-left-radius: 4px; }
+    </style>
+
+{% endblock %}

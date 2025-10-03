@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập{% endblock %}
+{% block content %}
+<div class="form-container">
+    <h2 class="text-center mb-4">Đăng nhập POWER Biology Chatbot</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <form method="POST" action="{{ url_for('main.login') }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group mb-3">
+            {{ form.username.label(class="form-label", text="ID Học sinh") }}
+            {{ form.username(class="form-control") }}
+        </div>
+        <div class="form-group mb-4">
+            {{ form.password.label(class="form-label", text="Mật khẩu") }}
+            {{ form.password(class="form-control") }}
+        </div>
+        <div class="d-grid">
+            {{ form.submit(class="btn btn-primary btn-block") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

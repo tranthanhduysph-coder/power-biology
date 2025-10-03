@@ -1,0 +1,11 @@
+Flask
+Flask-Login
+Flask-SQLAlchemy
+Flask-WTF
+gunicorn
+openai
+werkzeug
+itsdangerous
+Jinja2
+click
+SQLAlchemy
