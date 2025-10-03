@@ -13,7 +13,7 @@
     <div id="chat-window" class="chat-window">
         {% for message in chat_history %}
             <div class="message {{ message.sender }}">
-                {{ message.content | safe | nl2br }}
+                {{ message.content | safe }}
             </div>
         {% endfor %}
     </div>
@@ -43,16 +43,18 @@
                 });
                 if (!response.ok) { throw new Error('Network response was not ok'); }
                 const data = await response.json();
-                typingIndicator.innerHTML = data.response.replace(/\n/g, '<br>');
+                // Sửa ở đây để JavaScript tự xử lý xuống dòng
+                typingIndicator.innerHTML = data.response;
             } catch (error) {
                 console.error('Error:', error);
-                typingIndicator.innerHTML = 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.'.replace(/\n/g, '<br>');
+                typingIndicator.innerHTML = 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.';
             }
         });
         function appendMessage(text, sender) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message', sender);
-            messageElement.innerHTML = text.replace(/\n/g, '<br>');
+            // Sửa ở đây để JavaScript tự xử lý xuống dòng
+            messageElement.innerHTML = text; 
             chatWindow.appendChild(messageElement);
             chatWindow.scrollTop = chatWindow.scrollHeight;
             return messageElement;
