@@ -44,7 +44,7 @@
             <div class="card my-4">
                 <div class="card-header"><h4>Thêm hàng loạt từ CSV</h4></div>
                 <div class="card-body">
-                    <p>Upload file CSV với các cột theo thứ tự: <code>user_id,default_password,bot_type</code> (có dòng header).</p>
+                    <p>Upload file CSV với các cột: <code>user_id,default_password,bot_type</code>.</p>
                     <form method="POST" enctype="multipart/form-data" action="{{ url_for('main.admin_dashboard') }}">
                         {{ upload_form.hidden_tag() }}
                         <div class="form-group mb-2">
