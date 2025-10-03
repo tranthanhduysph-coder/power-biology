@@ -126,3 +126,50 @@ body {
 .card {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
+/* --- TRANG ĐĂNG NHẬP 2 CỘT --- */
+.login-container {
+    display: flex;
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    width: 100%;
+    max-width: 950px;
+    min-height: 600px;
+}
+
+.login-info-panel {
+    background-color: #1D3557; /* Xanh dương đậm */
+    color: #F1FAEE; /* Màu chữ sáng */
+    padding: 40px;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-info-panel h1 {
+    font-weight: 700;
+    border-bottom: 2px solid #A8DADC;
+    padding-bottom: 10px;
+}
+
+.login-info-panel .warning-text {
+    background-color: rgba(241, 250, 238, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #E63946; /* Màu đỏ cảnh báo */
+}
+
+.login-info-panel .contact-info {
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.login-form-panel {
+    padding: 40px;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}

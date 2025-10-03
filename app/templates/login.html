@@ -1,28 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Đăng nhập{% endblock %}
+{% block title %}Đăng nhập - POWER Biology Chatbot{% endblock %}
+
 {% block content %}
-<div class="form-container">
-    <h2 class="text-center mb-4">Đăng nhập POWER Biology Chatbot</h2>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    <form method="POST" action="{{ url_for('main.login') }}">
-        {{ form.hidden_tag() }}
-        <div class="form-group mb-3">
-            {{ form.username.label(class="form-label", text="ID Học sinh") }}
-            {{ form.username(class="form-control") }}
-        </div>
-        <div class="form-group mb-4">
-            {{ form.password.label(class="form-label", text="Mật khẩu") }}
-            {{ form.password(class="form-control") }}
-        </div>
-        <div class="d-grid">
-            {{ form.submit(class="btn btn-primary btn-block") }}
-        </div>
-    </form>
+<div class="login-container">
+    
+    <div class="login-info-panel">
+        <h1 class="mb-4">Dự án POWER Biology</h1>
+        <p>Đây là dự án nghiên cứu nhằm hỗ trợ học sinh tự học môn Sinh học với chatbot theo mô hình POWER (Planning, Organizing, Working, Evaluating, Rethink).</p>
+        <p>Học sinh tham gia tự học với chatbot theo tinh thần tự nguyện và dưới sự giám sát của giáo viên cùng người giám hộ. Hoạt động học tập với chatbot trong nghiên cứu này được cung cấp miễn phí cho học sinh đã đăng ký tham gia.</p>
+        <p class="warning-text"><strong>Lưu ý:</strong> Chatbot sử dụng công nghệ AI có thể nhầm lẫn và đưa ra những câu trả lời sai. Hãy luôn thận trọng và kiểm chứng thông tin.</p>
+        <hr>
+        <p class="contact-info"><strong>Mọi thắc mắc và phản hồi vui lòng liên hệ người nghiên cứu:</strong><br>Trần Thanh Duy (Zalo: 0907276901)</p>
+    </div>
+    
+    <div class="login-form-panel">
+        <h2 class="text-center mb-4">Đăng nhập hệ thống</h2>
+        <form method="POST" action="{{ url_for('main.login') }}">
+            {{ form.hidden_tag() }}
+            <div class="form-group mb-3">
+                {{ form.username.label(class="form-label") }}
+                {{ form.username(class="form-control", placeholder="Nhập ID học sinh") }}
+            </div>
+            <div class="form-group mb-4">
+                {{ form.password.label(class="form-label") }}
+                {{ form.password(class="form-control", placeholder="Nhập mật khẩu") }}
+            </div>
+            <div class="d-grid">
+                {{ form.submit(class="btn btn-primary btn-block") }}
+            </div>
+        </form>
+    </div>
+
 </div>
 {% endblock %}
