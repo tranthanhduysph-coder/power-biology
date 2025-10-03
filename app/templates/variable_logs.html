@@ -2,7 +2,7 @@
 {% block title %}Log Biến của {{ student.username }}{% endblock %}
 {% block content %}
     <h2 class="mb-3">Log Biến của: {{ student.username }}</h2>
-    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mb-4">&larr; Quay lại Dashboard</a>
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-secondary mb-4">&larr; Quay lại Dashboard</a>
     <table class="table table-striped">
         <thead>
             <tr>
