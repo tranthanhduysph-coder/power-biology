@@ -4,40 +4,41 @@
     <meta charset="UTF-8">
     <title>{% block title %}Hệ thống Chatbot{% endblock %}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{ url_for('chatbot_redirect') }}">Chatbot Platform</a>
+        <a class="navbar-brand" href="{{ url_for('main.chatbot_redirect') }}">Chatbot Platform</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ml-auto">
                 {% if current_user.is_authenticated %}
                     {% if current_user.is_admin %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
+                        <a class="nav-link" href="{{ url_for('main.admin_dashboard') }}">Admin Dashboard</a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('change_password') }}">Đổi mật khẩu</a>
+                        <a class="nav-link" href="{{ url_for('main.change_password') }}">Đổi mật khẩu</a>
                     </li>
                     <li class="nav-item">
                         <span class="navbar-text mr-3">Chào, {{ current_user.username }}!</span>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('logout') }}">Đăng xuất</a>
+                        <a class="nav-link" href="{{ url_for('main.logout') }}">Đăng xuất</a>
                     </li>
                 {% endif %}
             </ul>
         </div>
     </nav>
     <div class="container mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        {% block content %}{% endblock %}
+        {% with messages = get_flashed_messages(with_categories=true) %}\
+            {% if messages %}\
+                {% for category, message in messages %}\
+                    <div class="alert alert-{{ category }}">{{ message }}</div>\
+                {% endfor %}\
+            {% endif %}\
+        {% endwith %}\
+        {% block content %}{% endblock %}\
     </div>
 </body>
 </html>
