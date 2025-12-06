@@ -1,176 +1,155 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="chat-layout">
-    <div class="chat-container" id="chat-container">
+<div class="chat-wrapper">
+    <div class="chat-header">
+        <div class="bot-info">
+            <i class="fas fa-robot" style="color: #764ba2; font-size: 1.5rem;"></i>
+            <span>{{ bot_name if bot_name else 'POWER Chatbot' }}</span>
+        </div>
+        <button class="icon-btn" onclick="clearChatUI()" title="Làm sạch màn hình">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </div>
+
+    <div class="chat-box" id="chat-box">
         {% for msg in chat_history %}
-            <div class="message {{ 'user-message' if msg.sender == 'user' else 'bot-message' }}">
-                <div class="message-content">
-                    <div class="avatar">
-                        {% if msg.sender == 'user' %}
-                            <i class="fas fa-user"></i>
-                        {% else %}
-                            <i class="fas fa-robot"></i>
-                        {% endif %}
-                    </div>
-                    <div class="text">
-                        {{ msg.text | safe }}
-                    </div>
+            <div class="message {{ msg.sender }}">
+                <div class="avatar">
+                    {% if msg.sender == 'user' %}
+                        <i class="fas fa-user"></i>
+                    {% else %}
+                        <i class="fas fa-robot"></i>
+                    {% endif %}
+                </div>
+                <div class="bubble">
+                    {{ msg.text | safe }}
                 </div>
             </div>
         {% endfor %}
-        <div id="loading" class="message bot-message" style="display: none;">
-            <div class="message-content">
-                <div class="avatar"><i class="fas fa-robot"></i></div>
-                <div class="text typing-indicator">
-                    <span></span><span></span><span></span>
-                </div>
+
+        <div id="loading" class="message bot" style="display: none;">
+            <div class="avatar"><i class="fas fa-robot"></i></div>
+            <div class="bubble">
+                <div class="typing"><span></span><span></span><span></span></div>
             </div>
         </div>
     </div>
 
-    <div class="input-area-wrapper">
-        <div class="chat-utilities">
-            <button class="utility-btn clear-btn" onclick="clearChatUI()" title="Làm sạch màn hình">
-                <i class="fas fa-eraser"></i> Xóa màn hình
-            </button>
-            <a href="https://forms.gle/yjWe3t7DfCve63776" target="_blank" class="utility-btn survey-btn" title="Làm khảo sát cuối buổi">
-                <i class="fas fa-clipboard-list"></i> Làm Khảo sát
-            </a>
+    <div class="utilities-bar">
+        <a href="https://forms.gle/yjWe3t7DfCve63776" target="_blank" class="utility-chip">
+            <i class="fas fa-poll-h"></i> Làm Khảo Sát
+        </a>
         </div>
 
-        <form id="chat-form" class="gemini-input-box">
-            <button type="button" class="action-btn upload-btn" onclick="document.getElementById('file-upload').click()">
-                <i class="fas fa-plus"></i>
-            </button>
-            <input type="file" id="file-upload" hidden>
+    <div class="input-area">
+        <button class="icon-btn" onclick="document.getElementById('file-upload').click()" title="Gửi ảnh/file">
+            <i class="fas fa-paperclip"></i>
+        </button>
+        <input type="file" id="file-upload" hidden onchange="alert('Tính năng upload đang được phát triển!')">
 
+        <div class="input-container">
             <textarea 
                 id="user_input" 
-                name="user_input" 
-                placeholder="Nhập tin nhắn cho POWER Coach..." 
+                placeholder="Nhập tin nhắn..." 
                 rows="1" 
-                required
+                oninput="autoResize(this)"
+                onkeydown="handleEnter(event)"
             ></textarea>
+        </div>
 
-            <button type="submit" class="action-btn send-btn" id="send-btn" disabled>
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </form>
-        <div class="footer-note">POWER Biology có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.</div>
+        <button id="send-btn" class="send-btn" onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
     </div>
 </div>
 
 <script>
-    const chatContainer = document.getElementById('chat-container');
+    const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user_input');
-    const sendBtn = document.getElementById('send-btn');
-    const chatForm = document.getElementById('chat-form');
-
-    // 1. Tự động cuộn xuống cuối khi vào trang
+    
+    // Tự động cuộn xuống cuối
     function scrollToBottom() {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
     scrollToBottom();
 
-    // 2. Tự động giãn chiều cao Textarea (Giống ChatGPT)
-    userInput.addEventListener('input', function() {
-        this.style.height = 'auto'; // Reset chiều cao
-        this.style.height = (this.scrollHeight) + 'px'; // Set chiều cao mới theo nội dung
-        
-        // Bật/tắt nút gửi
-        if (this.value.trim() !== "") {
-            sendBtn.classList.add('active');
-            sendBtn.disabled = false;
-        } else {
-            sendBtn.classList.remove('active');
-            sendBtn.disabled = true;
-        }
-
-        // Giới hạn chiều cao tối đa (khoảng 5 dòng)
-        if (this.scrollHeight > 150) {
-            this.style.overflowY = "scroll";
-        } else {
-            this.style.overflowY = "hidden";
-        }
-    });
-
-    // 3. Xử lý phím Enter (Gửi) và Shift+Enter (Xuống dòng)
-    userInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // Ngăn xuống dòng mặc định
-            if (!sendBtn.disabled) {
-                chatForm.dispatchEvent(new Event('submit')); // Submit form
-            }
-        }
-    });
-
-    // 4. Xử lý sự kiện gửi tin nhắn
-    chatForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const message = userInput.value.trim();
-        if (!message) return;
-
-        // Thêm tin nhắn người dùng vào giao diện ngay lập tức
-        appendMessage('user', message);
-        
-        // Reset ô nhập liệu
-        userInput.value = '';
-        userInput.style.height = 'auto';
-        sendBtn.classList.remove('active');
-        sendBtn.disabled = true;
-        
-        // Hiển thị loading
-        document.getElementById('loading').style.display = 'flex';
-        scrollToBottom();
-
-        try {
-            const response = await fetch('/chatbot/ai', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'user_input': message
-                })
-            });
-
-            const data = await response.json();
-            document.getElementById('loading').style.display = 'none';
-            appendMessage('bot', data.response);
-        } catch (error) {
-            document.getElementById('loading').style.display = 'none';
-            appendMessage('bot', 'Lỗi kết nối. Vui lòng thử lại.');
-        }
-    });
-
-    // Hàm thêm tin nhắn vào UI
-    function appendMessage(sender, text) {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${sender}-message`;
-        
-        const icon = sender === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
-        
-        msgDiv.innerHTML = `
-            <div class="message-content">
-                <div class="avatar">${icon}</div>
-                <div class="text">${text}</div>
-            </div>
-        `;
-        
-        // Chèn trước thẻ loading
-        const loadingDiv = document.getElementById('loading');
-        chatContainer.insertBefore(msgDiv, loadingDiv);
-        scrollToBottom();
+    // Tự động giãn dòng textarea
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
     }
 
-    // 5. Hàm xóa UI (Chỉ xóa hiển thị, không xóa database)
-    function clearChatUI() {
-        if(confirm("Bạn muốn xóa màn hình chat? (Lịch sử vẫn được lưu trên hệ thống)")) {
-            // Xóa tất cả các div message trừ div loading
-            const messages = chatContainer.querySelectorAll('.message:not(#loading)');
-            messages.forEach(msg => msg.remove());
+    // Xử lý phím Enter
+    function handleEnter(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
         }
+    }
+
+    // Xóa màn hình
+    function clearChatUI() {
+        if(confirm("Xóa màn hình chat? (Lịch sử vẫn lưu trên hệ thống)")) {
+            const msgs = document.querySelectorAll('.message:not(#loading)');
+            msgs.forEach(m => m.remove());
+        }
+    }
+
+    // Gửi tin nhắn
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        // 1. Hiển thị tin nhắn User
+        appendMessage('user', text);
+        userInput.value = '';
+        userInput.style.height = 'auto';
+        
+        // 2. Hiển thị Loading
+        const loading = document.getElementById('loading');
+        loading.style.display = 'flex';
+        scrollToBottom();
+
+        // 3. Gọi API (Sử dụng biến API endpoint từ Server truyền xuống)
+        // Nếu biến này không có, mặc định là /chatbot/ai
+        const apiEndpoint = "{{ endpoint if endpoint else '/chatbot/ai' }}";
+
+        try {
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ 'user_input': text })
+            });
+
+            if (!response.ok) throw new Error("Lỗi kết nối Server");
+
+            const data = await response.json();
+            
+            // 4. Ẩn loading và hiện tin nhắn Bot
+            loading.style.display = 'none';
+            appendMessage('bot', data.response);
+
+        } catch (error) {
+            loading.style.display = 'none';
+            appendMessage('bot', `<span style="color:red">⚠️ Lỗi kết nối: ${error.message}. Vui lòng thử lại.</span>`);
+        }
+    }
+
+    function appendMessage(sender, html) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        
+        const avatarIcon = sender === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+        
+        div.innerHTML = `
+            <div class="avatar">${avatarIcon}</div>
+            <div class="bubble">${html}</div>
+        `;
+        
+        const loading = document.getElementById('loading');
+        chatBox.insertBefore(div, loading);
+        scrollToBottom();
     }
 </script>
 {% endblock %}
