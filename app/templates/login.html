@@ -1,35 +1,143 @@
 {% extends "base.html" %}
-{% block title %}Đăng nhập - POWER Biology Chatbot{% endblock %}
 
 {% block content %}
-<div class="login-container">
-    
-    <div class="login-info-panel">
-        <h1 class="mb-4">Dự án POWER Biology</h1>
-        <p>Đây là dự án nghiên cứu nhằm hỗ trợ học sinh tự học môn Sinh học với chatbot theo mô hình POWER (Planning, Organizing, Working, Evaluating, Rethink).</p>
-        <p>Học sinh tham gia tự học với chatbot theo tinh thần tự nguyện và dưới sự giám sát của giáo viên cùng người giám hộ. Hoạt động học tập với chatbot trong nghiên cứu này được cung cấp miễn phí cho học sinh đã đăng ký tham gia.</p>
-        <p class="warning-text"><strong>Lưu ý:</strong> Chatbot sử dụng công nghệ AI có thể nhầm lẫn và đưa ra những câu trả lời sai. Hãy luôn thận trọng và kiểm chứng thông tin.</p>
-        <hr>
-        <p class="contact-info"><strong>Mọi thắc mắc và phản hồi vui lòng liên hệ người nghiên cứu:</strong><br>Trần Thanh Duy (Zalo: 0907276901)</p>
-    </div>
-    
-    <div class="login-form-panel">
-        <h2 class="text-center mb-4">Đăng nhập hệ thống</h2>
-        <form method="POST" action="{{ url_for('main.login') }}">
-            {{ form.hidden_tag() }}
-            <div class="form-group mb-3">
-                {{ form.username.label(class="form-label") }}
-                {{ form.username(class="form-control", placeholder="Nhập ID học sinh") }}
-            </div>
-            <div class="form-group mb-4">
-                {{ form.password.label(class="form-label") }}
-                {{ form.password(class="form-control", placeholder="Nhập mật khẩu") }}
-            </div>
-            <div class="d-grid">
-                {{ form.submit(class="btn btn-primary btn-block") }}
-            </div>
-        </form>
-    </div>
 
+<style>
+    /* Căn giữa màn hình */
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        min-height: 100vh;
+        padding: 20px;
+        background-color: #edf2f7; /* Màu nền xám nhẹ */
+    }
+
+    /* Khung chứa chính (Chia 2 cột) */
+    .login-container {
+        display: flex;
+        width: 100%;
+        max-width: 900px;
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    /* Cột trái: Thông tin */
+    .login-info-panel {
+        flex: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Màu tím chủ đạo */
+        color: white;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .login-info-panel h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 20px; }
+    .login-info-panel p { font-size: 1rem; line-height: 1.6; margin-bottom: 15px; opacity: 0.95; }
+    .login-info-panel hr { border: 0; border-top: 1px solid rgba(255,255,255,0.3); margin: 20px 0; }
+    .warning-text { background: rgba(255, 0, 0, 0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); font-size: 0.9rem; }
+
+    /* Cột phải: Form đăng nhập */
+    .login-form-panel {
+        flex: 1;
+        padding: 40px;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .login-form-panel h2 { color: #2d3748; font-weight: 700; margin-bottom: 30px; font-size: 1.5rem; }
+
+    /* Style cho các ô nhập liệu (Input) - Chữ to rõ ràng */
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; font-size: 1rem; }
+    
+    .form-control {
+        width: 100%;
+        padding: 14px; /* Tăng padding để ô to hơn */
+        font-size: 1.1rem; /* Chữ to hơn */
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        transition: all 0.2s;
+        outline: none;
+    }
+    .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+
+    /* Nút bấm */
+    .btn-primary {
+        width: 100%;
+        padding: 14px;
+        background-color: #667eea;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+        text-align: center;
+    }
+    .btn-primary:hover { background-color: #5a67d8; transform: translateY(-1px); }
+
+    /* Responsive: Trên điện thoại sẽ xếp dọc */
+    @media (max-width: 768px) {
+        .login-container { flex-direction: column; }
+        .login-info-panel { padding: 30px; }
+        .login-form-panel { padding: 30px; }
+    }
+</style>
+
+<div class="login-wrapper">
+    <div class="login-container">
+        
+        <div class="login-info-panel">
+            <h1 class="mb-4">Dự án POWER Biology</h1>
+            <p>Đây là dự án nghiên cứu nhằm hỗ trợ học sinh tự học môn Sinh học với chatbot theo mô hình POWER (Planning, Organizing, Working, Evaluating, Rethink).</p>
+            <p>Học sinh tham gia tự học với chatbot theo tinh thần tự nguyện và dưới sự giám sát của giáo viên cùng người giám hộ.</p>
+            
+            <p class="warning-text">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Lưu ý:</strong> Chatbot sử dụng công nghệ AI có thể nhầm lẫn. Hãy luôn thận trọng và kiểm chứng thông tin.
+            </p>
+            
+            <hr>
+            <p class="contact-info" style="font-size: 0.9rem;">
+                <strong>Mọi thắc mắc vui lòng liên hệ:</strong><br>
+                ThS. Trần Thanh Duy (Zalo: 0907276901)
+            </p>
+        </div>
+        
+        <div class="login-form-panel">
+            <h2 class="text-center">Đăng nhập hệ thống</h2>
+            
+            <form method="POST" action="{{ url_for('main.login') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    <label class="form-label">Tên đăng nhập (ID)</label>
+                    {{ form.username(class="form-control", placeholder="Ví dụ: HS001") }}
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Mật khẩu</label>
+                    {{ form.password(class="form-control", placeholder="Nhập mật khẩu") }}
+                </div>
+                
+                <div class="d-grid" style="margin-top: 30px;">
+                    {{ form.submit(class="btn btn-primary btn-block", value="Bắt đầu học tập") }}
+                </div>
+            </form>
+
+            <div style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: #a0aec0;">
+                Quên mật khẩu? Liên hệ giáo viên phụ trách.
+            </div>
+        </div>
+
+    </div>
 </div>
+
 {% endblock %}
