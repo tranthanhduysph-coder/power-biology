@@ -2,163 +2,197 @@
 
 {% block content %}
 <style>
-    /* --- SIDEBAR LAYOUT --- */
+    /* 1. SIDEBAR STRUCTURE */
     .sidebar {
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        height: 100vh; /* Full chiều cao */
-    }
-    
-    .sidebar-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 20px;
-        border-bottom: 1px solid #edf2f7;
-        font-weight: 700;
+        height: 100vh;
+        background: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+        width: 300px; /* Cố định chiều rộng */
+        flex-shrink: 0;
     }
 
-    /* --- 1. NÚT DARK MODE (Gọn gàng) --- */
-    .theme-toggle-btn {
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 1.2rem;
-        color: #718096;
-        transition: transform 0.3s, color 0.3s;
-        padding: 5px;
-    }
-    .theme-toggle-btn:hover { color: var(--primary); transform: rotate(15deg); }
-
-    /* --- 2. ĐỒNG HỒ SỐ (DIGITAL CLOCK) --- */
-    .digital-clock-container {
-        margin-top: auto; /* Đẩy xuống dưới */
+    /* 2. ĐỒNG HỒ SỐ (DIGITAL CLOCK) - ĐẶT LÊN ĐẦU CHO DỄ THẤY */
+    .clock-widget {
+        background: #2d3748;
+        color: #fff;
         padding: 20px;
         text-align: center;
-        border-top: 1px solid #edf2f7;
-        background: #f8fafc;
+        border-bottom: 4px solid #667eea;
     }
-
-    .clock-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        color: #718096;
-        letter-spacing: 1px;
-        margin-bottom: 5px;
-    }
-
-    .digital-clock {
+    .clock-display {
         font-family: 'Courier New', Courier, monospace;
-        font-size: 2rem;
-        font-weight: 800;
-        color: #2d3748;
-        background: #fff;
-        padding: 10px;
-        border-radius: 8px;
-        border: 2px solid #e2e8f0;
-        box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
-        margin-bottom: 15px;
+        font-size: 2.2rem;
+        font-weight: 700;
         letter-spacing: 2px;
+        color: #63b3ed;
+    }
+    .clock-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: #a0aec0;
+        margin-top: 5px;
+        letter-spacing: 1px;
     }
 
-    /* --- 3. NÚT KHẢO SÁT (SURVEY) --- */
-    .survey-wrapper {
-        opacity: 0.4; /* Mờ khi chưa đủ giờ */
-        pointer-events: none; /* Không bấm được */
-        filter: grayscale(100%);
-        transition: all 0.5s ease;
-        transform: translateY(10px);
+    /* 3. NÚT CHAT MỚI */
+    .new-chat-btn-container {
+        padding: 15px;
+        border-bottom: 1px solid #edf2f7;
     }
-
-    .survey-wrapper.active {
-        opacity: 1;
-        pointer-events: auto;
-        filter: grayscale(0%);
-        transform: translateY(0);
-    }
-
-    .survey-btn {
+    .new-chat-btn {
         display: block;
         width: 100%;
         padding: 12px;
-        background: white;
-        color: #d69e2e;
-        border: 2px solid #d69e2e;
-        border-radius: 8px;
+        background: #667eea;
+        color: white;
         text-align: center;
+        border-radius: 8px;
         text-decoration: none;
         font-weight: 600;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        transition: 0.2s;
+        box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+    }
+    .new-chat-btn:hover {
+        background: #5a67d8;
+        transform: translateY(-1px);
+    }
+
+    /* 4. DANH SÁCH LỊCH SỬ (SESSION LIST) */
+    .history-label {
+        padding: 15px 20px 5px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #718096;
+        text-transform: uppercase;
+    }
+
+    .session-list-container {
+        flex: 1; /* Chiếm hết khoảng trống còn lại */
+        overflow-y: auto; /* Cho phép cuộn */
+        padding: 10px;
+    }
+
+    .session-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #4a5568;
+        text-decoration: none;
+        font-size: 0.9rem;
         transition: all 0.2s;
     }
-    .survey-btn:hover { background: #d69e2e; color: white; transform: translateY(-2px); }
 
-    /* --- DARK MODE STYLES --- */
-    body.dark-mode .sidebar { background: #2d3748; border-color: #4a5568; }
-    body.dark-mode .sidebar-header { color: #e2e8f0; border-color: #4a5568; }
-    body.dark-mode .theme-toggle-btn { color: #ecc94b; } /* Màu vàng */
-    
-    body.dark-mode .history-item { color: #cbd5e0; }
-    body.dark-mode .history-item:hover { background: #4a5568; color: white; }
-    
-    body.dark-mode .digital-clock-container { background: #2d3748; border-color: #4a5568; }
-    body.dark-mode .digital-clock { background: #1a202c; color: #48bb78; border-color: #4a5568; } /* Số màu xanh hacker */
-    body.dark-mode .clock-label { color: #a0aec0; }
-    
-    body.dark-mode .chat-wrapper { background: #1a202c; }
-    body.dark-mode .chat-header { background: #2d3748; border-color: #4a5568; color: white; }
-    body.dark-mode .chat-box { background: #1a202c; }
-    body.dark-mode .bot-identity { color: white; }
-    body.dark-mode .message.assistant .bubble { background: #2d3748; color: #e2e8f0; }
-    body.dark-mode .message.assistant .avatar { background: #4a5568; color: white; }
-    
-    body.dark-mode .input-area-wrapper { background: #2d3748; border-color: #4a5568; }
-    body.dark-mode .input-container { background: #1a202c; border-color: #4a5568; }
-    body.dark-mode .input-container:focus-within { border-color: #667eea; }
-    body.dark-mode textarea { color: white; }
-    body.dark-mode .action-btn { color: #a0aec0; }
+    .session-item:hover {
+        border-color: #cbd5e0;
+        background: #edf2f7;
+    }
+
+    .session-item.active {
+        background: #ebf8ff;
+        border-color: #bee3f8;
+        color: #2b6cb0;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .delete-session-btn {
+        color: #cbd5e0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: 0.2s;
+    }
+    .delete-session-btn:hover {
+        color: #e53e3e;
+        background: rgba(229, 62, 62, 0.1);
+    }
+
+    /* 5. SURVEY NẰM DƯỚI CÙNG */
+    .sidebar-footer {
+        padding: 15px;
+        border-top: 1px solid #edf2f7;
+        background: #fff;
+    }
+    .survey-wrapper {
+        opacity: 0.5; pointer-events: none; filter: grayscale(1); transition: 0.5s;
+    }
+    .survey-wrapper.active {
+        opacity: 1; pointer-events: auto; filter: grayscale(0);
+    }
+    .survey-btn {
+        display: block; width: 100%; padding: 10px;
+        border: 2px solid #d69e2e; color: #d69e2e; border-radius: 8px;
+        text-align: center; text-decoration: none; font-weight: 600;
+    }
+    .survey-btn:hover { background: #d69e2e; color: white; }
+
+    /* DARK MODE */
+    body.dark-mode .sidebar { background: #171923; border-color: #2d3748; }
+    body.dark-mode .clock-widget { background: #1a202c; border-bottom-color: #48bb78; }
+    body.dark-mode .clock-display { color: #48bb78; }
+    body.dark-mode .session-item { background: #2d3748; border-color: #4a5568; color: #e2e8f0; }
+    body.dark-mode .session-item:hover { background: #4a5568; }
+    body.dark-mode .session-item.active { background: #2c5282; border-color: #4299e1; color: white; }
+    body.dark-mode .sidebar-footer { background: #171923; border-color: #2d3748; }
 </style>
 
 <div class="sidebar">
-    <div>
-        <div class="sidebar-header">
-            <span><i class="fas fa-history"></i> Lịch sử Chat</span>
-            <button class="theme-toggle-btn" id="theme-btn" title="Chuyển chế độ Sáng/Tối">
-                <i class="fas fa-moon"></i>
-            </button>
-        </div>
-        
-        <div class="history-list">
-            <a href="#" class="history-item active">
-                <i class="fas fa-comments"></i> Phiên đang học
-                <span style="display:block; font-size: 0.75rem; opacity: 0.7; margin-top: 4px;">
-                    {{ chat_history[-1].timestamp.strftime('%H:%M %d/%m') if chat_history else 'Vừa bắt đầu' }}
-                </span>
-            </a>
-            
-            <div style="padding: 10px;">
-                <a href="{{ url_for('main.reset_session') }}" class="btn" style="display:block; text-align:center; background-color: #e2e8f0; color: #2d3748; padding: 10px; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">
-                    <i class="fas fa-plus"></i> Cuộc hội thoại mới
-                </a>
-            </div>
-        </div>
+    
+    <div class="clock-widget">
+        <div class="clock-display" id="study-clock">00:00:00</div>
+        <div class="clock-label"><i class="far fa-clock"></i> Thời gian học tập</div>
     </div>
 
-    <div class="digital-clock-container">
-        <div class="clock-label">Thời gian học tập</div>
-        <div class="digital-clock" id="study-clock">00:00:00</div>
+    <div class="new-chat-btn-container">
+        <a href="{{ url_for('main.new_chat') }}" class="new-chat-btn">
+            <i class="fas fa-plus"></i> Cuộc hội thoại mới
+        </a>
+    </div>
+
+    <div class="history-label">Lịch sử hội thoại</div>
+    <div class="session-list-container">
+        {% if session_list %}
+            {% for sess in session_list %}
+                <div style="position: relative;">
+                    <a href="{{ url_for('main.switch_session', session_id=sess.id) }}" 
+                       class="session-item {{ 'active' if sess.active else '' }}">
+                       <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">
+                           <i class="far fa-comments"></i> {{ sess.name }}
+                       </span>
+                    </a>
+                    
+                    <a href="{{ url_for('main.delete_session', session_id=sess.id) }}" 
+                       class="delete-session-btn"
+                       style="position: absolute; right: 10px; top: 12px;"
+                       onclick="return confirm('Bạn có chắc muốn xóa cuộc hội thoại này không?');">
+                       <i class="fas fa-trash-alt"></i>
+                    </a>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; padding: 20px; color: #a0aec0; font-size: 0.9rem;">
+                Chưa có lịch sử chat
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="sidebar-footer">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
+            <small style="color: #718096">Giao diện:</small>
+            <i class="fas fa-moon" id="theme-btn" style="cursor: pointer; color: #718096; font-size: 1.2rem;" title="Chế độ Tối/Sáng"></i>
+        </div>
 
         <div id="survey-box" class="survey-wrapper">
-            <div style="font-size: 0.8rem; color: #d69e2e; margin-bottom: 5px; font-weight: 600;">
-                <i class="fas fa-star"></i> Hoàn thành bài học
-            </div>
-            <a href="https://forms.gle/kZatDxVXLnHnDbPE9" 
-               class="survey-btn" 
-               id="survey-link"
-               target="_blank">
-               Làm Khảo Sát
+            <a href="[https://forms.gle/kZatDxVXLnHnDbPE9](https://forms.gle/kZatDxVXLnHnDbPE9)" class="survey-btn" id="survey-link" target="_blank">
+               <i class="fas fa-clipboard-check"></i> Làm Khảo Sát
             </a>
+            <div style="text-align: center; font-size: 0.75rem; color: #a0aec0; margin-top: 5px;">Mở sau 20 phút học</div>
         </div>
     </div>
 </div>
@@ -197,7 +231,7 @@
         {% else %}
             <div style="text-align: center; margin-top: 50px; color: #a0aec0;">
                 <i class="fas fa-comment-dots" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
-                <p>Chào em! Em đã sẵn sàng cho bài học hôm nay chưa?</p>
+                <p>Chào bạn! Bắt đầu cuộc trò chuyện mới nào.</p>
             </div>
         {% endif %}
         
@@ -223,17 +257,13 @@
 </div>
 
 <script>
-    // --- 1. LOGIC ĐỒNG HỒ & KHẢO SÁT (QUAN TRỌNG) ---
+    // --- 1. LOGIC ĐỒNG HỒ & KHẢO SÁT ---
     const clockDisplay = document.getElementById('study-clock');
     const surveyBox = document.getElementById('survey-box');
     const surveyLink = document.getElementById('survey-link');
-    
-    // Thời gian bắt buộc: 20 phút (1200 giây)
     const REQUIRED_SECONDS = 20 * 60; 
-    // const REQUIRED_SECONDS = 10; // (Dùng dòng này để test 10 giây)
 
     function startTimers() {
-        // Lấy thời điểm bắt đầu từ localStorage (để F5 không bị reset)
         let startTime = localStorage.getItem('sessionStart');
         if (!startTime) {
             startTime = Date.now();
@@ -243,73 +273,55 @@
         setInterval(() => {
             const now = Date.now();
             const elapsedSeconds = Math.floor((now - startTime) / 1000);
-
-            // A. Cập nhật Đồng hồ (Hiển thị Giờ : Phút : Giây)
-            // Tính toán để hiển thị dạng 00:00:00
             const h = Math.floor(elapsedSeconds / 3600);
             const m = Math.floor((elapsedSeconds % 3600) / 60);
             const s = elapsedSeconds % 60;
-            
-            // Format số đẹp (thêm số 0 đằng trước)
             const fmtH = h < 10 ? '0' + h : h;
             const fmtM = m < 10 ? '0' + m : m;
             const fmtS = s < 10 ? '0' + s : s;
             
-            // Render ra màn hình
-            clockDisplay.textContent = `${fmtH}:${fmtM}:${fmtS}`;
+            if (clockDisplay) clockDisplay.textContent = `${fmtH}:${fmtM}:${fmtS}`;
 
-            // B. Logic Nút Khảo sát (Ẩn hiện độc lập)
             if (elapsedSeconds >= REQUIRED_SECONDS) {
-                // Đủ 20 phút -> Hiện nút
-                if (!surveyBox.classList.contains('active')) {
+                if (surveyBox && !surveyBox.classList.contains('active')) {
                     surveyBox.classList.add('active');
                 }
-            } else {
-                // Chưa đủ -> Ẩn (đề phòng chỉnh tay)
-                surveyBox.classList.remove('active');
             }
         }, 1000);
     }
 
-    // Popup cảnh báo khi bấm nút Khảo sát
-    surveyLink.addEventListener('click', function(e) {
-        if (!surveyBox.classList.contains('active')) {
-            e.preventDefault(); return; // Chặn nếu chưa active
-        }
-        
-        const confirmSurvey = confirm(
-            "⚠️ XÁC NHẬN:\n\n" +
-            "Em đã hoàn thành nội dung bài học hôm nay chưa?\n" +
-            "Hãy chắc chắn em đã học xong trước khi làm khảo sát nhé.\n\n" +
-            "Bấm OK để mở link khảo sát."
-        );
-        if (!confirmSurvey) e.preventDefault();
-    });
-
-    // --- 2. LOGIC DARK MODE ---
-    const themeBtn = document.getElementById('theme-btn');
-    const themeIcon = themeBtn.querySelector('i');
-
-    function initTheme() {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            themeIcon.classList.replace('fa-moon', 'fa-sun');
-        }
+    if (surveyLink) {
+        surveyLink.addEventListener('click', function(e) {
+            if (!surveyBox.classList.contains('active')) { e.preventDefault(); return; }
+            if(!confirm("Em chắc chắn đã học xong chưa?")) e.preventDefault();
+        });
     }
 
-    themeBtn.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        if (document.body.classList.contains('dark-mode')) {
-            localStorage.setItem('theme', 'dark');
-            themeIcon.classList.replace('fa-moon', 'fa-sun');
-        } else {
-            localStorage.setItem('theme', 'light');
-            themeIcon.classList.replace('fa-sun', 'fa-moon');
-        }
-    });
+    startTimers();
 
-    // --- 3. LOGIC CHAT (Giữ nguyên) ---
+    // --- 2. DARK MODE ---
+    const themeBtn = document.getElementById('theme-btn');
+    function initTheme() {
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            if(themeBtn) themeBtn.classList.replace('fa-moon', 'fa-sun');
+        }
+    }
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                themeBtn.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeBtn.classList.replace('fa-sun', 'fa-moon');
+            }
+        });
+    }
+    initTheme();
+
+    // --- 3. CHAT LOGIC ---
     const chatBox = document.getElementById('chat-box');
     const form = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
@@ -317,36 +329,38 @@
     const fileNameDisplay = document.getElementById('file-name-display');
     const typingIndicator = document.getElementById('typing-indicator');
 
-    startTimers(); // Chạy đồng hồ
-    initTheme(); // Load theme
-    chatBox.scrollTop = chatBox.scrollHeight;
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
 
-    fileInput.addEventListener('change', function() {
-        if(this.files.length > 0) fileNameDisplay.textContent = 'File: ' + this.files[0].name;
-    });
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if(this.files.length > 0) fileNameDisplay.textContent = 'File: ' + this.files[0].name;
+        });
+    }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const text = userInput.value.trim();
-        const file = fileInput.files[0];
-        if (!text && !file) return;
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = userInput.value.trim();
+            const file = fileInput.files[0];
+            if (!text && !file) return;
 
-        appendMessage('user', text, file ? file.name : null);
-        userInput.value = ''; fileInput.value = ''; fileNameDisplay.textContent = ''; userInput.style.height = 'auto';
-        typingIndicator.style.display = 'flex';
-        chatBox.scrollTop = chatBox.scrollHeight;
+            appendMessage('user', text, file ? file.name : null);
+            userInput.value = ''; fileInput.value = ''; fileNameDisplay.textContent = ''; userInput.style.height = 'auto';
+            typingIndicator.style.display = 'flex';
+            chatBox.scrollTop = chatBox.scrollHeight;
 
-        const formData = new FormData();
-        formData.append('user_input', text);
-        if (file) formData.append('file', file);
+            const formData = new FormData();
+            formData.append('user_input', text);
+            if (file) formData.append('file', file);
 
-        try {
-            const response = await fetch('{{ endpoint }}', { method: 'POST', body: formData });
-            const data = await response.json();
-            typingIndicator.style.display = 'none';
-            if (data.response) appendMessage('assistant', data.response);
-        } catch { typingIndicator.style.display = 'none'; appendMessage('assistant', 'Lỗi kết nối.'); }
-    });
+            try {
+                const response = await fetch('{{ endpoint }}', { method: 'POST', body: formData });
+                const data = await response.json();
+                typingIndicator.style.display = 'none';
+                if (data.response) appendMessage('assistant', data.response);
+            } catch { typingIndicator.style.display = 'none'; appendMessage('assistant', 'Lỗi kết nối.'); }
+        });
+    }
 
     function appendMessage(sender, content, attachmentName=null) {
         const div = document.createElement('div');
@@ -359,8 +373,13 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
     
-    userInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.dispatchEvent(new Event('submit')); }
-    });
+    if (userInput) {
+        userInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.dispatchEvent(new Event('submit')); }
+        });
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
 </script>
 {% endblock %}
