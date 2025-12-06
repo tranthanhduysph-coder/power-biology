@@ -17,6 +17,7 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_admin:
+            flash("Bạn không có quyền truy cập.", "danger")
             return redirect(url_for('main.login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -24,13 +25,15 @@ def admin_required(f):
 def get_assistant_response(user_message, bot_type):
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
+        # Lấy đúng ID assistant
         assistant_id = os.environ.get('CHATBOT_AI_ID') if bot_type == 'ai' else os.environ.get('CHATBOT_GOFAI_ID')
-        if not api_key or not assistant_id: return "Lỗi cấu hình OpenAI."
+        
+        if not api_key or not assistant_id: return "Lỗi cấu hình OpenAI API."
         
         openai.api_key = api_key
         client = openai
         
-        # Logic Thread: Luôn ưu tiên thread đã lưu trong DB
+        # Luôn dùng thread_id từ DB để đảm bảo nhớ ngữ cảnh cũ
         thread_id = current_user.current_thread_id
         if not thread_id:
             thread = client.beta.threads.create()
@@ -38,8 +41,6 @@ def get_assistant_response(user_message, bot_type):
             current_user.current_thread_id = thread_id
             db.session.commit()
         
-        session['thread_id'] = thread_id # Sync lại session
-
         client.beta.threads.messages.create(thread_id=thread_id, role="user", content=user_message)
         run = client.beta.threads.runs.create(thread_id=thread_id, assistant_id=assistant_id)
         
@@ -48,54 +49,54 @@ def get_assistant_response(user_message, bot_type):
             run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
             
         if run.status == 'completed':
-            messages = client.beta.threads.messages.list(thread_id=thread_id)
-            return messages.data[0].content[0].text.value
-        return "Xin lỗi, tôi đang gặp chút trục trặc. Bạn thử lại nhé."
+            msgs = client.beta.threads.messages.list(thread_id=thread_id)
+            return msgs.data[0].content[0].text.value
+        return f"AI Error: {run.status}"
     except Exception as e:
-        print(f"AI Error: {e}")
-        return "Lỗi kết nối AI."
+        print(f"AI Exception: {e}")
+        return "Hệ thống bận."
 
 def handle_chat_logic(bot_type_check):
     if not current_user.is_admin and current_user.bot_type != bot_type_check:
         return jsonify({'response': "Lỗi quyền."}), 403
 
     user_text = request.form.get('user_input', '').strip()
-    uploaded_file = request.files.get('file')
+    file = request.files.get('file')
     
-    # Lấy session ID từ DB để đảm bảo đồng bộ
-    session_id = current_user.current_session_id
-    if not session_id:
-        session_id = str(uuid.uuid4())
-        current_user.current_session_id = session_id
+    # Đảm bảo session_id tồn tại
+    sess_id = current_user.current_session_id
+    if not sess_id:
+        sess_id = str(uuid.uuid4())
+        current_user.current_session_id = sess_id
         db.session.commit()
 
+    file_html = ""
     file_msg = ""
-    db_file_path = None
-    filename = None
 
-    if uploaded_file and allowed_file(uploaded_file.filename):
-        filename = secure_filename(uploaded_file.filename)
+    # Xử lý File
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        uploaded_file.save(save_path)
-        db_file_path = f"/static/uploads/{filename}"
-        file_msg = f"\n[System: User uploaded {filename}]"
-
-    if not user_text and not uploaded_file:
-        return jsonify({'response': ""}), 400
-
-    content_to_save = user_text
-    if db_file_path:
+        file.save(save_path)
+        
+        web_path = f"/static/uploads/{filename}"
+        file_msg = f"\n[User uploaded: {filename}]"
+        
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-            content_to_save += f'<br><img src="{db_file_path}" style="max-width: 200px; border-radius: 10px; margin-top: 10px;">'
+            file_html = f'<br><img src="{web_path}" style="max-width:200px; border-radius:10px; margin-top:5px;">'
         else:
-            content_to_save += f'<br><a href="{db_file_path}" target="_blank">{filename}</a>'
+            file_html = f'<br><a href="{web_path}" target="_blank" style="color:#fff"><i class="fas fa-paperclip"></i> {filename}</a>'
 
-    user_msg = Message(sender='user', content=content_to_save, author=current_user, session_id=session_id)
+    if not user_text and not file: return jsonify({'response': ""}), 400
+
+    # Lưu tin nhắn User
+    user_msg = Message(sender='user', content=user_text + file_html, author=current_user, session_id=sess_id)
     db.session.add(user_msg)
 
-    prompt = user_text + file_msg
-    full_resp = get_assistant_response(prompt, bot_type_check)
+    # Gọi AI
+    full_resp = get_assistant_response(user_text + file_msg, bot_type_check)
 
+    # Tách JSON Log
     ui_text = full_resp
     try:
         if "```json" in full_resp:
@@ -105,10 +106,11 @@ def handle_chat_logic(bot_type_check):
             if json_str:
                 data = json.loads(json_str)
                 for k, v in data.items():
-                    db.session.add(VariableLog(user_id=current_user.id, session_id=session_id, variable_name=str(k), variable_value=str(v)))
+                    db.session.add(VariableLog(user_id=current_user.id, session_id=sess_id, variable_name=str(k), variable_value=str(v)))
     except: pass
 
-    bot_msg = Message(sender='assistant', content=ui_text, author=current_user, session_id=session_id)
+    # Lưu tin nhắn Bot
+    bot_msg = Message(sender='assistant', content=ui_text, author=current_user, session_id=sess_id)
     db.session.add(bot_msg)
     db.session.commit()
 
@@ -126,19 +128,18 @@ def login():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
-            # Khi login, đảm bảo session_id tồn tại
+            # Không reset session_id ở đây để giữ lịch sử
             if not user.current_session_id:
                 user.current_session_id = str(uuid.uuid4())
                 db.session.commit()
             return redirect(url_for('main.chatbot_redirect'))
-        flash('Sai ID/Password.', 'danger')
+        flash('Sai ID hoặc mật khẩu.', 'danger')
     return render_template('login.html', form=form)
 
 @main.route('/logout')
 @login_required
 def logout():
     logout_user()
-    session.clear()
     return redirect(url_for('main.login'))
 
 @main.route('/chatbot_redirect')
@@ -147,23 +148,21 @@ def chatbot_redirect():
     if current_user.is_admin: return redirect(url_for('main.admin_dashboard'))
     return redirect(url_for(f'main.chatbot_{current_user.bot_type}'))
 
-# Hàm render chung để tránh lặp code
-def render_chatbot(bot_type, bot_name):
+# Hàm render chung để đảm bảo load history đúng
+def render_chat_page(bot_type, bot_name):
     if not current_user.is_admin and current_user.bot_type != bot_type:
         return redirect(url_for('main.chatbot_redirect'))
     
     if request.method == 'POST': return handle_chat_logic(bot_type)
 
-    # Logic lấy history CẢI TIẾN
-    # 1. Lấy session_id hiện tại
+    # ĐỒNG BỘ SESSION: Lấy session_id từ DB (cái này quan trọng nhất để fix mất history)
     sess_id = current_user.current_session_id
     if not sess_id:
         sess_id = str(uuid.uuid4())
         current_user.current_session_id = sess_id
         db.session.commit()
     
-    # 2. Query tin nhắn theo user_id VÀ session_id
-    # (Nếu muốn hiển thị TẤT CẢ lịch sử cũ, bỏ đoạn filter session_id đi)
+    # Load history theo session đó
     hist = Message.query.filter_by(
         user_id=current_user.id, 
         session_id=sess_id
@@ -177,29 +176,30 @@ def render_chatbot(bot_type, bot_name):
 @main.route('/chatbot/ai', methods=['GET', 'POST'])
 @login_required
 def chatbot_ai():
-    return render_chatbot('ai', "POWER Coach (AI)")
+    return render_chat_page('ai', "POWER Coach (AI)")
 
 @main.route('/chatbot/gofai', methods=['GET', 'POST'])
 @login_required
 def chatbot_gofai():
-    return render_chatbot('gofai', "POWER Biology (Basic)")
+    return render_chat_page('gofai', "POWER Biology (Basic)")
 
 @main.route('/reset_session')
 @login_required
 def reset_session():
-    # Tạo phiên mới -> Lịch sử cũ sẽ ẩn đi (nhưng vẫn còn trong Admin)
+    # Khi user bấm nút này mới tạo session mới -> History cũ ẩn đi (nhưng vẫn còn trong DB)
     current_user.current_session_id = str(uuid.uuid4())
     try:
-        # Reset cả thread OpenAI
         openai.api_key = os.environ.get('OPENAI_API_KEY')
         current_user.current_thread_id = openai.beta.threads.create().id
     except: pass
-    
     db.session.commit()
-    flash("Đã bắt đầu phiên mới.", "success")
+    flash("Đã bắt đầu phiên làm việc mới.", "success")
     return redirect(url_for('main.chatbot_redirect'))
 
-# --- ADMIN ROUTES (Giữ nguyên phần admin của bạn) ---
+@main.route('/disclaimer')
+def disclaimer(): return render_template('disclaimer.html')
+
+# --- ADMIN ROUTES ---
 @main.route('/admin', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -213,27 +213,26 @@ def admin_dashboard():
             u = User(username=user_form.username.data, bot_type=user_form.bot_type.data, is_admin=user_form.is_admin.data)
             u.set_password(user_form.password.data)
             db.session.add(u); db.session.commit()
-            flash('Thêm user thành công', 'success')
+            flash('Thêm thành công', 'success')
         else: flash('User đã tồn tại', 'danger')
         return redirect(url_for('main.admin_dashboard'))
         
     if upload_form.validate_on_submit() and 'csv_file' in request.files:
         try:
             stream = io.StringIO(upload_form.csv_file.data.stream.read().decode("UTF8"), newline=None)
-            csv_reader = csv.reader(stream); next(csv_reader, None)
+            csv_r = csv.reader(stream); next(csv_r, None)
             c=0
-            for r in csv_reader:
+            for r in csv_r:
                 if len(r)>=3 and not User.query.filter_by(username=r[0]).first():
                     u=User(username=r[0], bot_type=r[2].lower()); u.set_password(r[1])
                     db.session.add(u); c+=1
-            db.session.commit(); flash(f'Thêm {c} user từ CSV', 'success')
+            db.session.commit(); flash(f'Thêm {c} từ CSV', 'success')
         except Exception as e: flash(f'Lỗi CSV: {e}', 'danger')
         return redirect(url_for('main.admin_dashboard'))
 
     users = User.query.filter_by(is_admin=False).all()
     return render_template('admin_dashboard.html', users=users, user_form=user_form, upload_form=upload_form, reset_form=reset_form)
 
-# ... (Các route admin delete, history, logs giữ nguyên) ...
 @main.route('/admin/delete/<int:user_id>')
 @login_required
 @admin_required
@@ -246,17 +245,17 @@ def delete_user(user_id):
 @login_required
 @admin_required
 def view_chat_history(user_id):
-    student = User.query.get_or_404(user_id)
-    messages = Message.query.filter_by(user_id=user_id).order_by(Message.timestamp.asc()).all()
-    return render_template('chat_history.html', student=student, messages=messages)
+    u = User.query.get_or_404(user_id)
+    msgs = Message.query.filter_by(user_id=user_id).order_by(Message.timestamp.asc()).all()
+    return render_template('chat_history.html', student=u, messages=msgs)
 
 @main.route('/admin/logs/<int:user_id>')
 @login_required
 @admin_required
 def view_variable_logs(user_id):
-    student = User.query.get_or_404(user_id)
+    u = User.query.get_or_404(user_id)
     logs = VariableLog.query.filter_by(user_id=user_id).order_by(VariableLog.timestamp.desc()).all()
-    return render_template('variable_logs.html', student=student, logs=logs)
+    return render_template('variable_logs.html', student=u, logs=logs)
 
 @main.route('/admin/export_history')
 @login_required
@@ -275,7 +274,7 @@ def reset_student_password(user_id):
     u = User.query.get_or_404(user_id); form = ResetPasswordForm()
     if form.validate_on_submit():
         u.set_password(form.new_password.data); db.session.commit()
-        flash('Reset password thành công', 'success')
+        flash('Reset thành công', 'success')
     return redirect(url_for('main.admin_dashboard'))
 
 @main.route('/change_password', methods=['GET', 'POST'])
@@ -285,9 +284,6 @@ def change_password():
     if form.validate_on_submit():
         if current_user.check_password(form.current_password.data):
             current_user.set_password(form.new_password.data); db.session.commit()
-            flash('Đổi pass thành công', 'success'); return redirect(url_for('main.chatbot_redirect'))
-        flash('Sai pass cũ', 'danger')
+            flash('Đổi mật khẩu thành công', 'success'); return redirect(url_for('main.chatbot_redirect'))
+        flash('Mật khẩu cũ không đúng', 'danger')
     return render_template('change_password.html', form=form)
-
-@main.route('/disclaimer')
-def disclaimer(): return render_template('disclaimer.html')
