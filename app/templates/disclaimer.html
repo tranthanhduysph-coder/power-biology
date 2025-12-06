@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 40px auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.05);">
+    <h1 style="color: #c53030; text-align: center; margin-bottom: 30px;">Cảnh báo & Miễn trừ trách nhiệm</h1>
+    
+    <div class="content" style="line-height: 1.8; color: #444;">
+        <p><strong>1. Tính chính xác của thông tin:</strong></p>
+        <p>Chatbot POWER Biology sử dụng công nghệ AI tạo sinh (Generative AI). Mặc dù được thiết kế để hỗ trợ học tập dựa trên sách giáo khoa, AI <strong>có thể mắc lỗi (hallucinations)</strong> hoặc đưa ra thông tin không chính xác, lỗi thời.</p>
+        
+        <p><strong>2. Vai trò hỗ trợ:</strong></p>
+        <p>Công cụ này chỉ mang tính chất <strong>hỗ trợ học tập</strong>, không thay thế cho giáo viên, sách giáo khoa chính thống hay các tài liệu học tập được nhà trường quy định.</p>
+        
+        <p><strong>3. Trách nhiệm người dùng:</strong></p>
+        <p>Người học cần luôn có tư duy phản biện, <strong>tự kiểm chứng thông tin</strong> quan trọng với sách giáo khoa. Chúng tôi không chịu trách nhiệm về bất kỳ hậu quả nào phát sinh từ việc sử dụng thông tin do AI cung cấp.</p>
+        
+        <p><strong>4. Quyền riêng tư:</strong></p>
+        <p>Dữ liệu hội thoại có thể được lưu trữ để phục vụ mục đích nghiên cứu và cải thiện chất lượng hệ thống. Vui lòng không nhập các thông tin cá nhân nhạy cảm.</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <a href="{{ url_for('main.chatbot_redirect') }}" style="background: #2b6cb0; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px; font-weight: 600;">Đã hiểu & Quay lại học tập</a>
+    </div>
+</div>
+{% endblock %}
