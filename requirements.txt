@@ -13,3 +13,4 @@ click
 SQLAlchemy
 email_validator
 psycopg2-binary
+whitenoise
