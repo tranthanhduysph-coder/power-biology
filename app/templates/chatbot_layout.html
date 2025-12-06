@@ -1,183 +1,195 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
+<div class="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-history"></i> Lịch sử Chat
+    </div>
+    
+    <div class="history-list">
+        <a href="#" class="history-item active">
+            <i class="fas fa-comments"></i> Phiên đang chat
+            <span style="display:block; font-size: 0.75rem; opacity: 0.7; margin-top: 4px;">
+                {{ chat_history[-1].timestamp.strftime('%H:%M %d/%m') if chat_history else 'Mới bắt đầu' }}
+            </span>
+        </a>
+
+        <div style="margin-top: 20px; padding: 0 10px;">
+            <a href="{{ url_for('main.reset_session') }}" class="btn" style="display:block; text-align:center; background-color: #e2e8f0; color: #2d3748;">
+                <i class="fas fa-plus"></i> Cuộc hội thoại mới
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="chat-wrapper">
     <div class="chat-header">
         <div class="bot-identity">
-            {% if 'Basic' in bot_name %}
-                <i class="fas fa-cube" style="color: #6c757d;"></i>
+            {% if 'ai' in endpoint %}
+                <i class="fas fa-robot" style="color: var(--primary); font-size: 1.5rem;"></i>
             {% else %}
-                <i class="fas fa-brain" style="color: #667eea;"></i>
+                <i class="fas fa-brain" style="color: #ed8936; font-size: 1.5rem;"></i>
             {% endif %}
             <span>{{ bot_name }}</span>
         </div>
-        <div class="header-actions">
-            <button onclick="clearChatUI()" title="Làm sạch màn hình"><i class="fas fa-eraser"></i></button>
+        <div class="status-indicator" style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #48bb78;">
+            <span style="width: 8px; height: 8px; background: #48bb78; border-radius: 50%;"></span> Online
         </div>
     </div>
 
     <div class="chat-box" id="chat-box">
-        {% for msg in chat_history %}
-            <div class="message {{ 'user' if msg.sender == 'user' else 'assistant' }}">
-                <div class="avatar">
-                    {% if msg.sender != 'user' %}<i class="fas fa-robot"></i>{% endif %}
+        {% if chat_history %}
+            {% for msg in chat_history %}
+                <div class="message {{ msg.sender }}">
+                    <div class="avatar">
+                        {% if msg.sender == 'user' %}
+                            <i class="fas fa-user"></i>
+                        {% else %}
+                            <i class="fas fa-robot"></i>
+                        {% endif %}
+                    </div>
+                    <div class="bubble">
+                        {{ msg.content | safe }}
+                    </div>
                 </div>
-                <div class="bubble">
-                    {{ msg.text | safe }}
-                </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; margin-top: 50px; color: #a0aec0;">
+                <i class="fas fa-comment-dots" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+                <p>Bắt đầu cuộc trò chuyện với AI ngay!</p>
             </div>
-        {% endfor %}
+        {% endif %}
         
-        <div id="loading" class="message assistant" style="display: none;">
+        <div class="message assistant typing" id="typing-indicator" style="display: none;">
             <div class="avatar"><i class="fas fa-robot"></i></div>
             <div class="bubble">
-                <div class="typing"><span></span><span></span><span></span></div>
+                <span></span><span></span><span></span>
             </div>
         </div>
     </div>
 
     <div class="input-area-wrapper">
-        <div class="utilities-bar">
-            <a href="https://forms.gle/yjWe3t7DfCve63776" target="_blank" class="utility-chip">
-                <i class="fas fa-poll-h"></i> Làm Khảo Sát
-            </a>
-        </div>
-
-        <div class="input-container">
-            <button class="action-btn" onclick="document.getElementById('file-upload').click()" title="Gửi file/ảnh">
-                <i class="fas fa-paperclip"></i>
-            </button>
-            <input type="file" id="file-upload" hidden>
-
-            <textarea id="user_input" placeholder="Nhập tin nhắn..." rows="1"></textarea>
-
-            <button id="send-btn" class="send-btn" onclick="sendMessage()" disabled>
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
+        <form id="chat-form" enctype="multipart/form-data">
+            <div class="input-container">
+                <label for="file-upload" class="action-btn" title="Gửi ảnh/file">
+                    <i class="fas fa-paperclip"></i>
+                    <input type="file" id="file-upload" name="file" style="display: none;">
+                </label>
+                
+                <textarea id="user-input" name="user_input" placeholder="Nhập tin nhắn..." rows="1" autofocus></textarea>
+                
+                <button type="submit" class="send-btn" id="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div id="file-name-display" style="font-size: 0.8rem; color: var(--primary); margin-top: 5px; margin-left: 10px;"></div>
+        </form>
     </div>
 </div>
 
 <script>
+    const form = document.getElementById('chat-form');
     const chatBox = document.getElementById('chat-box');
-    const userInput = document.getElementById('user_input');
+    const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
+    const typingIndicator = document.getElementById('typing-indicator');
     const fileInput = document.getElementById('file-upload');
-    const uploadBtn = document.querySelector('.action-btn');
-    
-    // API Endpoint được truyền từ Server
-    const API_ENDPOINT = "{{ endpoint }}"; 
+    const fileNameDisplay = document.getElementById('file-name-display');
 
-    // Auto Scroll
-    function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
-    scrollToBottom();
+    // Tự động cuộn xuống cuối khi load trang
+    chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Auto Resize Textarea
-    userInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-        checkInput();
-    });
-
-    // Check Input để bật tắt nút gửi
-    function checkInput() {
-        const hasText = userInput.value.trim() !== "";
-        const hasFile = fileInput.files.length > 0;
-        sendBtn.disabled = !(hasText || hasFile);
-    }
-
-    // Xử lý File Select
+    // Hiển thị tên file khi chọn
     fileInput.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            uploadBtn.style.color = '#10a37f';
-            userInput.placeholder = `Đã chọn: ${this.files[0].name}`;
-            userInput.focus();
-        }
-        checkInput();
-    });
-
-    // Xử lý Enter
-    userInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (!sendBtn.disabled) sendMessage();
+        if(this.files && this.files.length > 0) {
+            fileNameDisplay.textContent = 'Đã chọn: ' + this.files[0].name;
+        } else {
+            fileNameDisplay.textContent = '';
         }
     });
 
-    // Hàm gửi tin nhắn
-    async function sendMessage() {
+    // Xử lý gửi tin nhắn
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
         const text = userInput.value.trim();
         const file = fileInput.files[0];
 
         if (!text && !file) return;
 
-        // UI User
-        let uiContent = text;
-        if (file) {
-            if (file.type.startsWith('image/')) {
-                const fakeUrl = URL.createObjectURL(file);
-                uiContent += `<br><img src="${fakeUrl}" style="max-width: 200px; border-radius: 10px; margin-top: 10px;">`;
-            } else {
-                uiContent += `<br><i class="fas fa-paperclip"></i> Đang gửi: ${file.name}...`;
-            }
-        }
-        appendMessage('user', uiContent);
-
-        // Reset Input
+        // 1. Hiện tin nhắn User ngay lập tức
+        appendMessage('user', text, file ? file.name : null);
+        
+        // Reset form
         userInput.value = '';
+        fileInput.value = '';
+        fileNameDisplay.textContent = '';
         userInput.style.height = 'auto';
-        userInput.placeholder = 'Nhập tin nhắn...';
-        sendBtn.disabled = true;
-        uploadBtn.style.color = '#888';
 
-        // Show Loading
-        document.getElementById('loading').style.display = 'flex';
-        scrollToBottom();
+        // 2. Hiện hiệu ứng typing
+        typingIndicator.style.display = 'flex';
+        chatBox.scrollTop = chatBox.scrollHeight;
 
-        // Prepare Data
+        // 3. Gửi dữ liệu lên Server
         const formData = new FormData();
         formData.append('user_input', text);
-        if (file) {
-            formData.append('file', file);
-        }
+        if (file) formData.append('file', file);
 
         try {
-            const response = await fetch(API_ENDPOINT, {
+            const response = await fetch('{{ endpoint }}', {
                 method: 'POST',
-                body: formData 
+                body: formData
             });
-
-            if (!response.ok) throw new Error("Lỗi Server");
             const data = await response.json();
-            
-            // UI Bot
-            document.getElementById('loading').style.display = 'none';
-            appendMessage('assistant', data.response);
-            
-            // Clear File Input real
-            fileInput.value = '';
 
+            // 4. Ẩn typing và hiện tin nhắn Bot
+            typingIndicator.style.display = 'none';
+            if (data.response) {
+                appendMessage('assistant', data.response);
+            } else {
+                appendMessage('assistant', 'Có lỗi xảy ra, vui lòng thử lại.');
+            }
         } catch (error) {
-            document.getElementById('loading').style.display = 'none';
-            appendMessage('assistant', `<span style="color:red">⚠️ Lỗi kết nối: ${error.message}</span>`);
+            typingIndicator.style.display = 'none';
+            appendMessage('assistant', 'Mất kết nối server.');
         }
-    }
+    });
 
-    function appendMessage(role, html) {
+    // Hàm vẽ tin nhắn ra màn hình
+    function appendMessage(sender, content, attachmentName=null) {
         const div = document.createElement('div');
-        div.className = `message ${role}`;
+        div.className = `message ${sender}`;
+        
+        let icon = sender === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+        
+        // Xử lý nội dung (nếu là user gửi ảnh thì chỉ hiện text, server sẽ render ảnh sau)
+        let bubbleContent = content;
+        if (attachmentName) {
+            bubbleContent += `<br><small><i>[Đang gửi: ${attachmentName}]</i></small>`;
+        }
+
         div.innerHTML = `
-            <div class="avatar">${role === 'assistant' ? '<i class="fas fa-robot"></i>' : ''}</div>
-            <div class="bubble">${html}</div>
+            <div class="avatar">${icon}</div>
+            <div class="bubble">${bubbleContent}</div>
         `;
-        chatBox.insertBefore(div, document.getElementById('loading'));
-        scrollToBottom();
+        
+        // Chèn vào TRƯỚC typing indicator
+        chatBox.insertBefore(div, typingIndicator);
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function clearChatUI() {
-        if(confirm("Xóa màn hình chat?")) {
-            document.querySelectorAll('.message:not(#loading)').forEach(el => el.remove());
+    // Tự động tăng chiều cao textarea
+    userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        if(this.value === '') this.style.height = 'auto';
+    });
+    
+    // Enter để gửi (Shift+Enter xuống dòng)
+    userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
         }
-    }
+    });
 </script>
 {% endblock %}
