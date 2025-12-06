@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="chat-wrapper">
+    <div class="chat-header">
+        <div class="bot-identity">
+            {% if 'Basic' in bot_name %}
+                <i class="fas fa-cube" style="color: #6c757d;"></i>
+            {% else %}
+                <i class="fas fa-brain" style="color: #667eea;"></i>
+            {% endif %}
+            <span>{{ bot_name }}</span>
+        </div>
+        <div class="header-actions">
+            <button onclick="clearChatUI()" title="Làm sạch màn hình"><i class="fas fa-eraser"></i></button>
+        </div>
+    </div>
+
+    <div class="chat-box" id="chat-box">
+        {% for msg in chat_history %}
+            <div class="message {{ 'user' if msg.sender == 'user' else 'assistant' }}">
+                <div class="avatar">
+                    {% if msg.sender != 'user' %}<i class="fas fa-robot"></i>{% endif %}
+                </div>
+                <div class="bubble">
+                    {{ msg.text | safe }}
+                </div>
+            </div>
+        {% endfor %}
+        
+        <div id="loading" class="message assistant" style="display: none;">
+            <div class="avatar"><i class="fas fa-robot"></i></div>
+            <div class="bubble">
+                <div class="typing"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area-wrapper">
+        <div class="utilities-bar">
+            <a href="https://forms.gle/yjWe3t7DfCve63776" target="_blank" class="utility-chip">
+                <i class="fas fa-poll-h"></i> Làm Khảo Sát
+            </a>
+        </div>
+
+        <div class="input-container">
+            <button class="action-btn" onclick="document.getElementById('file-upload').click()" title="Gửi file/ảnh">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input type="file" id="file-upload" hidden>
+
+            <textarea id="user_input" placeholder="Nhập tin nhắn..." rows="1"></textarea>
+
+            <button id="send-btn" class="send-btn" onclick="sendMessage()" disabled>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const chatBox = document.getElementById('chat-box');
+    const userInput = document.getElementById('user_input');
+    const sendBtn = document.getElementById('send-btn');
+    const fileInput = document.getElementById('file-upload');
+    const uploadBtn = document.querySelector('.action-btn');
+    
+    // API Endpoint được truyền từ Server
+    const API_ENDPOINT = "{{ endpoint }}"; 
+
+    // Auto Scroll
+    function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
+    scrollToBottom();
+
+    // Auto Resize Textarea
+    userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        checkInput();
+    });
+
+    // Check Input để bật tắt nút gửi
+    function checkInput() {
+        const hasText = userInput.value.trim() !== "";
+        const hasFile = fileInput.files.length > 0;
+        sendBtn.disabled = !(hasText || hasFile);
+    }
+
+    // Xử lý File Select
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            uploadBtn.style.color = '#10a37f';
+            userInput.placeholder = `Đã chọn: ${this.files[0].name}`;
+            userInput.focus();
+        }
+        checkInput();
+    });
+
+    // Xử lý Enter
+    userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!sendBtn.disabled) sendMessage();
+        }
+    });
+
+    // Hàm gửi tin nhắn
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        const file = fileInput.files[0];
+
+        if (!text && !file) return;
+
+        // UI User
+        let uiContent = text;
+        if (file) {
+            if (file.type.startsWith('image/')) {
+                const fakeUrl = URL.createObjectURL(file);
+                uiContent += `<br><img src="${fakeUrl}" style="max-width: 200px; border-radius: 10px; margin-top: 10px;">`;
+            } else {
+                uiContent += `<br><i class="fas fa-paperclip"></i> Đang gửi: ${file.name}...`;
+            }
+        }
+        appendMessage('user', uiContent);
+
+        // Reset Input
+        userInput.value = '';
+        userInput.style.height = 'auto';
+        userInput.placeholder = 'Nhập tin nhắn...';
+        sendBtn.disabled = true;
+        uploadBtn.style.color = '#888';
+
+        // Show Loading
+        document.getElementById('loading').style.display = 'flex';
+        scrollToBottom();
+
+        // Prepare Data
+        const formData = new FormData();
+        formData.append('user_input', text);
+        if (file) {
+            formData.append('file', file);
+        }
+
+        try {
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                body: formData 
+            });
+
+            if (!response.ok) throw new Error("Lỗi Server");
+            const data = await response.json();
+            
+            // UI Bot
+            document.getElementById('loading').style.display = 'none';
+            appendMessage('assistant', data.response);
+            
+            // Clear File Input real
+            fileInput.value = '';
+
+        } catch (error) {
+            document.getElementById('loading').style.display = 'none';
+            appendMessage('assistant', `<span style="color:red">⚠️ Lỗi kết nối: ${error.message}</span>`);
+        }
+    }
+
+    function appendMessage(role, html) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        div.innerHTML = `
+            <div class="avatar">${role === 'assistant' ? '<i class="fas fa-robot"></i>' : ''}</div>
+            <div class="bubble">${html}</div>
+        `;
+        chatBox.insertBefore(div, document.getElementById('loading'));
+        scrollToBottom();
+    }
+
+    function clearChatUI() {
+        if(confirm("Xóa màn hình chat?")) {
+            document.querySelectorAll('.message:not(#loading)').forEach(el => el.remove());
+        }
+    }
+</script>
+{% endblock %}
