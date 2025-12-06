@@ -338,3 +338,8 @@ def export_chat_history():
         csv_writer.writerow([e['t'], e['s'], e['u'], e['type'], e['c'], e['v']])
         
     return Response(string_io.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=full_data.csv"})
+    # ... (các route khác giữ nguyên)
+
+@main.route('/disclaimer')
+def disclaimer():
+    return render_template('disclaimer.html')
