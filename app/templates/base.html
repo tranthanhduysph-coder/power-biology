@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POWER Biology</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
+    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)" rel="stylesheet">
 </head>
 <body>
     
@@ -16,11 +16,11 @@
         </div>
         <div class="nav-links">
             {% if current_user.is_authenticated %}
-                <span class="user-info">Chào, <b>{{ current_user.username }}</b>!</span>
+                <span style="color: #cbd5e0; margin-right: 15px;">Xin chào, <b>{{ current_user.username }}</b></span>
                 {% if current_user.is_admin %}
-                    <a href="{{ url_for('main.admin_dashboard') }}">Admin Dashboard</a>
+                    <a href="{{ url_for('main.admin_dashboard') }}">Admin</a>
                 {% else %}
-                    <a href="{{ url_for('main.reset_session') }}" class="reset-link">Phiên mới</a>
+                    <a href="{{ url_for('main.reset_session') }}" style="color: #63b3ed;">Phiên mới</a>
                 {% endif %}
                 <a href="{{ url_for('main.change_password') }}">Đổi mật khẩu</a>
                 <a href="{{ url_for('main.logout') }}" class="logout-btn">Đăng xuất</a>
@@ -46,7 +46,7 @@
         <div class="footer-content">
             <p>Phát triển bởi <b>ThS. Trần Thanh Duy</b> | Email: <a href="mailto:ttduy@sgu.edu.vn">ttduy@sgu.edu.vn</a></p>
             <p class="disclaimer-text">
-                Trang web này sử dụng AI tạo sinh. 
+                Hệ thống sử dụng AI tạo sinh. 
                 <a href="{{ url_for('main.disclaimer') }}">Xem Cảnh báo & Miễn trừ trách nhiệm</a>
             </p>
         </div>
