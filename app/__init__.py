@@ -4,8 +4,10 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 import os
 from dotenv import load_dotenv
+# THÊM DÒNG NÀY
+from whitenoise import WhiteNoise
 
-# Load biến môi trường
+# Load env
 load_dotenv()
 
 db = SQLAlchemy()
@@ -15,37 +17,41 @@ migrate = Migrate()
 def create_app():
     app = Flask(__name__)
     
-    # 1. Cấu hình Secret Key
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_dev')
+    # 1. Secret Key
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_key_cho_dev_12345')
 
-    # --- 2. CẤU HÌNH DATABASE (FIX LỖI MẤT DỮ LIỆU) ---
-    # Đường dẫn đến ổ đĩa bền vững trên Render (Bạn cần kiểm tra Mount Path trong settings)
-    # Mặc định thường là /var/data
-    RENDER_DISK_PATH = '/var/data'
+    # 2. Cấu hình Database (Logic thông minh)
+    disk_path = '/var/data'
+    render_db_url = os.environ.get('DATABASE_URL')
     
-    # Kiểm tra xem thư mục Disk có tồn tại không (Chỉ có trên Render khi đã gắn Disk)
-    if os.path.exists(RENDER_DISK_PATH):
-        print(f">>> PHÁT HIỆN DISK TẠI: {RENDER_DISK_PATH}. ĐANG SỬ DỤNG DATABASE BỀN VỮNG.")
-        # Lưu file db vào trong ổ đĩa này: /var/data/site.db
-        db_path = os.path.join(RENDER_DISK_PATH, 'site.db')
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    if os.path.exists(disk_path):
+        print(f"--- [INFO] PHÁT HIỆN DISK TẠI {disk_path}. SỬ DỤNG SQLITE BỀN VỮNG. ---")
+        db_file = os.path.join(disk_path, 'site.db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_file}'
+    elif render_db_url:
+        print("--- [INFO] SỬ DỤNG DATABASE_URL (POSTGRESQL). ---")
+        if render_db_url.startswith("postgres://"):
+            render_db_url = render_db_url.replace("postgres://", "postgresql://", 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = render_db_url
     else:
-        print(">>> KHÔNG THẤY DISK. ĐANG CHẠY CHẾ ĐỘ LOCAL (Dữ liệu sẽ mất khi deploy lại trên Cloud).")
-        # Chạy local hoặc chưa gắn disk đúng cách
+        print("--- [WARNING] CHẠY SQLITE TẠM THỜI. ---")
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
-    
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    # ----------------------------------------------------
 
-    # 3. Cấu hình Upload (Cũng nên lưu vào Disk nếu muốn ảnh không bị mất)
-    # Nếu có Disk, ta lưu ảnh vào /var/data/uploads, sau đó symlink hoặc serve file
-    # Nhưng để đơn giản, tạm thời ta giữ nguyên cấu hình upload cũ, ưu tiên cứu Database trước.
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # 3. Cấu hình Upload
     UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+    # --- CẤU HÌNH STATIC FILES (FIX LỖI CSS 404) ---
+    # Ép Flask phục vụ static file thông qua WhiteNoise
+    app.wsgi_app = WhiteNoise(app.wsgi_app, root=os.path.join(app.root_path, 'static'), prefix='static/')
+    # -----------------------------------------------
+
+    # 4. Init Extensions
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -61,21 +67,17 @@ def create_app():
     from .routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
-    # 4. TỰ ĐỘNG TẠO LẠI BẢNG VÀ ADMIN MẶC ĐỊNH
-    # Vì database cũ đã mất, đoạn này sẽ tự chạy khi deploy để tạo lại cấu trúc và acc admin
+    # 5. Tự động tạo bảng & Admin
     with app.app_context():
         try:
             db.create_all()
-            print(">>> Database Tables created successfully.")
-            
-            # Tự động tạo lại admin nếu chưa có
             if not User.query.filter_by(username='admin').first():
                 admin = User(username='admin', bot_type='ai', is_admin=True)
-                admin.set_password('admin123') # Mật khẩu mặc định
+                admin.set_password('admin123')
                 db.session.add(admin)
                 db.session.commit()
-                print(">>> ĐÃ KHÔI PHỤC TÀI KHOẢN ADMIN: admin / admin123")
+                print("--- [SUCCESS] ĐÃ TẠO ADMIN MẶC ĐỊNH ---")
         except Exception as e:
-            print(f">>> Lỗi khởi tạo DB: {e}")
+            print(f"--- [ERROR] DB ERROR: {e} ---")
 
     return app
