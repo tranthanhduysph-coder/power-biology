@@ -4,111 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POWER Biology</title>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #667eea;
-            --primary-dark: #5a67d8;
-            --text-dark: #1a202c;
-            --text-gray: #4a5568;
-            --bg-light: #f7fafc;
-            --sidebar-width: 300px;
-            --header-height: 64px;
-        }
+        /* CSS CƠ BẢN NHẤT - KHÔNG CAN THIỆP VÀO LAYOUT CON */
+        :root { --primary: #667eea; --text-dark: #1a202c; --bg-light: #f7fafc; --header-height: 60px; }
         * { box-sizing: border-box; }
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-            margin: 0; padding: 0; height: 100vh;
-            display: flex; flex-direction: column; font-size: 16px;
+            font-family: 'Inter', sans-serif; margin: 0; padding: 0;
+            background-color: var(--bg-light); color: var(--text-dark);
+            height: 100vh; display: flex; flex-direction: column;
         }
         a { text-decoration: none; color: var(--primary); }
         
-        /* Navbar */
+        /* Navbar Cố định */
         .navbar {
-            background: #2d3748; color: white; height: var(--header-height);
+            height: var(--header-height); background: #2d3748; color: white;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 24px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000;
+            padding: 0 20px; flex-shrink: 0; z-index: 1000;
         }
-        .nav-brand a { color: white; font-size: 1.4rem; font-weight: 700; }
-        .nav-links { display: flex; align-items: center; gap: 20px; }
-        .nav-links a { color: #e2e8f0; font-weight: 500; transition: 0.2s; }
-        .nav-links a:hover { color: white; }
-        
-        .logout-btn { 
-            background: #e53e3e; padding: 8px 16px; border-radius: 6px; 
-            color: white !important; font-weight: 600; 
-        }
+        .nav-brand a { color: white; font-weight: 700; font-size: 1.2rem; }
+        .nav-links { display: flex; gap: 15px; align-items: center; }
+        .nav-links a { color: #cbd5e0; font-size: 0.9rem; }
+        .logout-btn { background: #e53e3e; padding: 5px 10px; border-radius: 4px; color: white !important; }
 
-        /* Layout */
-        .main-content { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: row; }
-        
         /* Flash Messages */
-        .flash-messages { position: fixed; top: 80px; right: 20px; z-index: 2000; width: 350px; }
-        .alert { padding: 16px; border-radius: 8px; margin-bottom: 10px; color: white; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .alert-success { background: #48bb78; }
+        .flash-messages { position: fixed; top: 70px; right: 20px; z-index: 2000; }
+        .alert { padding: 15px; border-radius: 5px; margin-bottom: 10px; color: white; background: #48bb78; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .alert-danger { background: #f56565; }
-        .alert-info { background: #4299e1; }
-        
-        /* Footer */
-        .site-footer { background: #f8f9fa; border-top: 1px solid #e2e8f0; padding: 12px; text-align: center; font-size: 0.9rem; color: #718096; flex-shrink: 0; }
+
+        /* Container Chính: Để trống để layout con tự điền vào */
+        .main-content {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: calc(100vh - var(--header-height)); /* Quan trọng */
+            overflow: hidden; 
+        }
     </style>
 </head>
 <body>
-    
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="{{ url_for('main.index') }}">
-                <i class="fas fa-dna" style="margin-right: 10px;"></i>POWER Biology
-            </a>
+            <a href="{{ url_for('main.index') }}"><i class="fas fa-dna"></i> POWER Biology</a>
         </div>
         <div class="nav-links">
             {% if current_user.is_authenticated %}
-                <span style="color: #cbd5e0; margin-right: 10px;" class="desktop-only">
-                    Hi, <b>{{ current_user.username }}</b>
-                </span>
+                <span style="color:#cbd5e0">Hi, <b>{{ current_user.username }}</b></span>
                 {% if current_user.is_admin %}
-                    <a href="{{ url_for('main.admin_dashboard') }}"><i class="fas fa-cog"></i> Admin</a>
+                    <a href="{{ url_for('main.admin_dashboard') }}">Admin</a>
                 {% else %}
-                    <a href="{{ url_for('main.reset_session') }}" style="color: #63b3ed;"><i class="fas fa-plus"></i> Chat mới</a>
+                    <a href="{{ url_for('main.new_chat') }}">Chat Mới</a>
                 {% endif %}
                 <a href="{{ url_for('main.change_password') }}">Đổi Pass</a>
-                
-                <a href="{{ url_for('main.logout') }}" 
-                   class="logout-btn" 
-                   onclick="localStorage.removeItem('sessionStart');">
-                   Thoát
-                </a>
+                <a href="{{ url_for('main.logout') }}" class="logout-btn" onclick="localStorage.removeItem('sessionStart');">Thoát</a>
             {% endif %}
         </div>
     </nav>
 
     <div class="flash-messages">
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+            {% if messages %}{% for c, m in messages %}<div class="alert alert-{{ c }}">{{ m }}</div>{% endfor %}{% endif %}
         {% endwith %}
     </div>
 
     <div class="main-content">
         {% block content %}{% endblock %}
     </div>
-
-    <footer class="site-footer">
-        <div class="footer-content">
-            <p>Phát triển bởi <b>ThS. Trần Thanh Duy</b></p>
-            <p style="font-size: 0.8rem; margin-top: 4px;">
-                <a href="{{ url_for('main.disclaimer') }}">Cảnh báo & Miễn trừ trách nhiệm</a>
-            </p>
-        </div>
-    </footer>
-    
 </body>
 </html>
