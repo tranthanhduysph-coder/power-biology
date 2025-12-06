@@ -11,3 +11,5 @@ itsdangerous
 Jinja2
 click
 SQLAlchemy
+email_validator
+psycopg2-binary
