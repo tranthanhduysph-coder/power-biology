@@ -1,3 +1,4 @@
+# --- 1. KHAI BÁO THƯ VIỆN ĐẦY ĐỦ ---
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, Response, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from functools import wraps
@@ -8,10 +9,10 @@ from .models import User, Message, VariableLog
 from .forms import LoginForm, UserForm, UploadCSVForm, ChangePasswordForm, ResetPasswordForm
 import openai, csv, io, uuid, time, json, os
 
-# --- 1. KHỞI TẠO BLUEPRINT (BẮT BUỘC) ---
+# --- 2. KHỞI TẠO BLUEPRINT (QUAN TRỌNG) ---
 main = Blueprint('main', __name__)
 
-# --- 2. CÁC HÀM HỖ TRỢ ---
+# --- 3. CÁC HÀM HỖ TRỢ ---
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'doc', 'txt'}
 
@@ -28,6 +29,7 @@ def get_assistant_response(user_message, bot_type):
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
         assistant_id = os.environ.get('CHATBOT_AI_ID') if bot_type == 'ai' else os.environ.get('CHATBOT_GOFAI_ID')
+        
         if not api_key or not assistant_id: return "Lỗi cấu hình OpenAI API."
         
         openai.api_key = api_key
@@ -53,11 +55,11 @@ def get_assistant_response(user_message, bot_type):
         return f"AI Error: {run.status}"
     except Exception as e:
         print(f"AI Exception: {e}")
-        return "Hệ thống đang bận."
+        return "Hệ thống bận."
 
 def handle_chat_logic(bot_type_check):
     if not current_user.is_admin and current_user.bot_type != bot_type_check:
-        return jsonify({'response': "Lỗi quyền truy cập."}), 403
+        return jsonify({'response': "Lỗi quyền."}), 403
 
     user_text = request.form.get('user_input', '').strip()
     file = request.files.get('file')
@@ -69,18 +71,17 @@ def handle_chat_logic(bot_type_check):
         db.session.commit()
 
     file_html = ""
-    file_msg = ""
-
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         file.save(save_path)
-        web_path = f"/static/uploads/{filename}"
         file_msg = f"\n[User uploaded: {filename}]"
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-            file_html = f'<br><img src="{web_path}" style="max-width:200px; border-radius:10px; margin-top:5px;">'
+            file_html = f'<br><img src="/static/uploads/{filename}" style="max-width:200px; border-radius:10px; margin-top:5px;">'
         else:
-            file_html = f'<br><a href="{web_path}" target="_blank" class="file-link"><i class="fas fa-paperclip"></i> {filename}</a>'
+            file_html = f'<br><a href="/static/uploads/{filename}" target="_blank" class="file-link"><i class="fas fa-paperclip"></i> {filename}</a>'
+    else:
+        file_msg = ""
 
     if not user_text and not file: return jsonify({'response': ""}), 400
 
@@ -106,9 +107,9 @@ def handle_chat_logic(bot_type_check):
     db.session.add(bot_msg)
     db.session.commit()
 
-    return jsonify({'response': full_resp})
+    return jsonify({'response': ui_text})
 
-# --- 3. CÁC ROUTE CHÍNH ---
+# --- 4. CÁC ROUTE CHÍNH ---
 
 @main.route('/')
 def index(): return redirect(url_for('main.login'))
@@ -199,7 +200,7 @@ def delete_session(session_id):
 @main.route('/disclaimer')
 def disclaimer(): return render_template('disclaimer.html')
 
-# --- 4. ADMIN DASHBOARD & CSV (SỬ DỤNG LOGIC CŨ CỦA BẠN) ---
+# --- 5. ADMIN DASHBOARD & XỬ LÝ CSV (FIXED) ---
 
 @main.route('/admin', methods=['GET', 'POST'])
 @login_required
@@ -210,62 +211,82 @@ def admin_dashboard():
     reset_form = ResetPasswordForm()
 
     # 1. Thêm thủ công
-    if user_form.validate_on_submit() and 'username' in request.form:
+    if user_form.validate_on_submit():
         if not User.query.filter_by(username=user_form.username.data).first():
             u = User(username=user_form.username.data, bot_type=user_form.bot_type.data, is_admin=user_form.is_admin.data)
             u.set_password(user_form.password.data)
             db.session.add(u)
             db.session.commit()
-            flash('Thêm thành công!', 'success')
-        else:
-            flash('ID đã tồn tại.', 'danger')
+            flash('Thêm thành công', 'success')
+        else: flash('User đã tồn tại', 'danger')
         return redirect(url_for('main.admin_dashboard'))
 
-    # 2. Upload CSV (LOGIC CŨ ĐƯỢC PHỤC HỒI)
+    # 2. Upload CSV (XỬ LÝ MẠNH MẼ - KHÔNG LỖI 500)
     if upload_form.validate_on_submit() and upload_form.csv_file.data:
         try:
-            # Code cũ của bạn dùng: stream.read().decode("UTF8")
-            # Tôi thêm 'utf-8-sig' để hỗ trợ cả Excel có BOM
-            file_data = upload_form.csv_file.data.stream.read().decode("utf-8-sig")
-            stream = io.StringIO(file_data, newline=None)
+            file = upload_form.csv_file.data
+            file.seek(0) # Đưa con trỏ về đầu
+            content_bytes = file.read() # Đọc toàn bộ vào RAM (Tránh lỗi stream)
             
-            csv_reader = csv.reader(stream)
-            next(csv_reader, None) # Bỏ qua header
+            # Thử giải mã bằng nhiều bảng mã
+            text_content = None
+            for encoding in ['utf-8-sig', 'utf-8', 'cp1252', 'latin-1']:
+                try:
+                    text_content = content_bytes.decode(encoding)
+                    break # Thành công thì thoát vòng lặp
+                except UnicodeDecodeError:
+                    continue
             
-            count = 0
-            for row in csv_reader:
-                # Bỏ qua dòng trống
-                if not row or len(row) < 3: continue
-                
-                user_id = row[0].strip()
-                password = row[1].strip()
-                bot_type_raw = row[2].strip().lower() # Chuyển về thường
-                
-                # Mapping dữ liệu: "AI Coach" -> "ai"
-                if 'ai' in bot_type_raw: bot_type = 'ai'
-                elif 'basic' in bot_type_raw or 'gofai' in bot_type_raw: bot_type = 'gofai'
-                else: bot_type = 'gofai' # Mặc định
+            if not text_content:
+                raise ValueError("Không thể đọc định dạng file này.")
 
-                if not User.query.filter_by(username=user_id).first():
-                    new_user = User(username=user_id, bot_type=bot_type)
-                    new_user.set_password(password)
-                    db.session.add(new_user)
+            # Đọc CSV từ chuỗi
+            csv_file = io.StringIO(text_content)
+            csv_input = csv.reader(csv_file)
+            
+            # Bỏ qua Header
+            try: next(csv_input, None)
+            except: pass
+
+            count = 0
+            for row in csv_input:
+                if not row or len(row) < 1: continue
+                
+                # Làm sạch dữ liệu
+                r_user = row[0].strip()
+                if not r_user: continue
+                
+                # Mật khẩu (Mặc định 123456)
+                r_pass = row[1].strip() if len(row) > 1 and row[1].strip() else "123456"
+                
+                # Bot Type (Tự động map AI Coach -> ai)
+                raw_type = row[2].strip().lower() if len(row) > 2 and row[2].strip() else "gofai"
+                
+                if 'ai' in raw_type: r_type = 'ai'
+                else: r_type = 'gofai'
+                
+                # Kiểm tra trùng
+                if not User.query.filter_by(username=r_user).first():
+                    u = User(username=r_user, bot_type=r_type)
+                    u.set_password(r_pass)
+                    db.session.add(u)
                     count += 1
             
             db.session.commit()
-            flash(f'Thêm thành công {count} tài khoản từ file CSV!', 'success')
+            if count > 0: flash(f'Thành công! Đã thêm {count} user.', 'success')
+            else: flash('File rỗng hoặc tất cả user đã tồn tại.', 'warning')
             
         except Exception as e:
-            db.session.rollback()
+            db.session.rollback() # Cứu DB khỏi treo
             print(f"CSV ERROR: {e}")
-            flash(f'Lỗi xử lý file CSV: {e}', 'danger')
-            
+            flash(f'Lỗi xử lý file: {str(e)}', 'danger')
+        
         return redirect(url_for('main.admin_dashboard'))
 
     users = User.query.filter_by(is_admin=False).all()
     return render_template('admin_dashboard.html', users=users, user_form=user_form, upload_form=upload_form, reset_form=reset_form)
 
-# --- CÁC ROUTE ADMIN KHÁC ---
+# --- CÁC ROUTE KHÁC ---
 
 @main.route('/admin/delete/<int:user_id>')
 @login_required
