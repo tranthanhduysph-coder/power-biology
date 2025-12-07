@@ -1,211 +1,92 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POWER Biology</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #667eea; --text-dark: #1a202c; --bg-light: #f7fafc; --header-height: 60px; }
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif; margin: 0; padding: 0;
+            background-color: var(--bg-light); color: var(--text-dark);
+            /* Layout Flex cột: Header - Main - Footer */
+            display: flex; flex-direction: column; height: 100vh;
+        }
+        
+        a { text-decoration: none; color: var(--primary); }
 
-/* Trang Admin cần cuộn dọc */
-{% block main_class %}scroll-y{% endblock %}
+        /* Navbar cố định chiều cao */
+        .navbar {
+            height: var(--header-height); background: #2d3748; color: white;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; flex-shrink: 0; z-index: 1000;
+        }
+        .nav-brand a { color: white; font-weight: 700; font-size: 1.2rem; }
+        .nav-links { display: flex; gap: 15px; align-items: center; }
+        .nav-links a { color: #cbd5e0; font-size: 0.9rem; }
+        .logout-btn { background: #e53e3e; padding: 5px 10px; border-radius: 4px; color: white !important; }
 
-{% block content %}
-<style>
-    .scroll-y { overflow-y: auto; height: 100%; }
+        /* Flash Messages */
+        .flash-messages { position: fixed; top: 70px; right: 20px; z-index: 2000; width: 90%; max-width: 400px; }
+        .alert { padding: 15px; border-radius: 5px; margin-bottom: 10px; color: white; background: #48bb78; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .alert-danger { background: #f56565; }
 
-    /* Layout chính */
-    .admin-wrapper {
-        padding: 20px;
-        background-color: #f7fafc;
-        min-height: 100%;
-    }
-    .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        background: white;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
+        /* Main Content: Tự động chiếm khoảng trống còn lại */
+        .main-content {
+            flex: 1; /* Quan trọng: Đẩy footer xuống đáy */
+            width: 100%;
+            position: relative;
+            /* overflow sẽ được quy định bởi từng trang con */
+        }
 
-    /* Header */
-    .admin-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #edf2f7;
-    }
-    .admin-title h1 { margin: 0; color: #2d3748; font-size: 1.8rem; }
-    .admin-title p { margin: 5px 0 0; color: #718096; }
+        /* Footer cố định chiều cao (hoặc tự động) */
+        .site-footer {
+            background: #f8f9fa; border-top: 1px solid #e2e8f0;
+            padding: 10px; text-align: center; font-size: 0.8rem; color: #718096;
+            flex-shrink: 0; /* Không bị co lại */
+        }
 
-    /* Các Panel chức năng */
-    .action-panel {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 30px;
-    }
-    .action-title { font-size: 1.2rem; font-weight: 700; color: #2d3748; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-
-    /* Form Upload CSV */
-    .csv-upload-box {
-        background: #ebf8ff; border: 1px dashed #4299e1; padding: 15px; border-radius: 8px; margin-bottom: 20px;
-    }
-    .csv-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-
-    /* Form Grid (Thêm thủ công) */
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-    
-    .form-control {
-        width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px;
-    }
-    .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; color: white; font-weight: 600; text-decoration: none; display: inline-block; }
-    .btn-primary { background: #667eea; }
-    .btn-success { background: #48bb78; }
-    .btn-danger { background: #e53e3e; padding: 5px 10px; font-size: 0.85rem; }
-    .btn-info { background: #3182ce; padding: 5px 10px; font-size: 0.85rem; margin-right: 5px; }
-    .btn-warning { background: #d69e2e; padding: 5px 10px; font-size: 0.85rem; margin-right: 5px; }
-
-    /* Bảng dữ liệu (Quan trọng cho mobile) */
-    .table-responsive {
-        width: 100%;
-        overflow-x: auto; /* Cho phép cuộn ngang trên điện thoại */
-        -webkit-overflow-scrolling: touch;
-    }
-    table { width: 100%; border-collapse: collapse; min-width: 800px; /* Ép bảng rộng ra để không bị vỡ */ }
-    th { background: #edf2f7; text-align: left; padding: 12px; color: #4a5568; font-weight: 700; }
-    td { padding: 12px; border-bottom: 1px solid #e2e8f0; color: #2d3748; }
-    tr:hover { background: #f7fafc; }
-
-    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
-    .badge-ai { background: #bee3f8; color: #2c5282; }
-    .badge-basic { background: #feebc8; color: #744210; }
-
-    /* Mobile Responsive Fix */
-    @media (max-width: 768px) {
-        .admin-wrapper { padding: 10px; }
-        .container { padding: 15px; }
-        .admin-header { flex-direction: column; align-items: flex-start; gap: 15px; }
-        .csv-form { flex-direction: column; align-items: stretch; }
-        .form-grid { grid-template-columns: 1fr; }
-        .btn { width: 100%; text-align: center; margin-bottom: 5px; }
-        /* Nút trong bảng nhỏ lại chút */
-        .btn-info, .btn-danger, .btn-warning { width: auto; margin-bottom: 2px; } 
-    }
-</style>
-
-<div class="admin-wrapper">
-    <div class="container">
-        <div class="admin-header">
-            <div class="admin-title">
-                <h1><i class="fas fa-user-shield"></i> Admin Dashboard</h1>
-                <p>Quản lý toàn bộ dữ liệu học sinh và hệ thống</p>
-            </div>
-            <div>
-                <a href="{{ url_for('main.export_chat_history') }}" class="btn btn-success">
-                    <i class="fas fa-file-csv"></i> Xuất dữ liệu Chat (.CSV)
-                </a>
-            </div>
+        /* Responsive Navbar */
+        @media (max-width: 768px) {
+            .desktop-only { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="{{ url_for('main.index') }}"><i class="fas fa-dna"></i> POWER Bio</a>
         </div>
-
-        <div class="action-panel">
-            <div class="action-title"><i class="fas fa-user-plus"></i> Thêm Học Sinh Mới</div>
-
-            <div class="csv-upload-box">
-                <h4 style="margin-top:0; margin-bottom:10px; color:#2b6cb0;">Cách 1: Upload danh sách (CSV)</h4>
-                <p style="font-size:0.9rem; color:#4a5568; margin-bottom:10px;">
-                    File Excel/CSV cần có format: <code>username, password, bot_type</code> (Ví dụ: HS01, 123456, ai)
-                </p>
-                <form method="POST" enctype="multipart/form-data" class="csv-form">
-                    {{ upload_form.hidden_tag() }}
-                    {{ upload_form.csv_file(class="form-control", style="background:white;") }}
-                    {{ upload_form.submit(class="btn btn-primary", value="Tải lên hàng loạt") }}
-                </form>
-            </div>
-
-            <div style="margin-top: 20px;">
-                <h4 style="margin-bottom:10px; color:#2d3748;">Cách 2: Thêm thủ công từng em</h4>
-                <form method="POST">
-                    {{ user_form.hidden_tag() }}
-                    <div class="form-grid">
-                        <div>
-                            <label style="font-weight:600; font-size:0.9rem;">Tên đăng nhập</label>
-                            {{ user_form.username(class="form-control", placeholder="Ví dụ: HS_NGUYEN_A") }}
-                        </div>
-                        <div>
-                            <label style="font-weight:600; font-size:0.9rem;">Mật khẩu</label>
-                            {{ user_form.password(class="form-control") }}
-                        </div>
-                        <div>
-                            <label style="font-weight:600; font-size:0.9rem;">Loại Bot</label>
-                            {{ user_form.bot_type(class="form-control") }}
-                        </div>
-                        <div style="display:flex; align-items:center; padding-top:25px;">
-                            {{ user_form.is_admin() }} <label for="is_admin" style="margin-left:5px; cursor:pointer;">Quyền Admin</label>
-                        </div>
-                    </div>
-                    <div style="margin-top:15px;">
-                        {{ user_form.submit(class="btn btn-primary", value="Tạo tài khoản") }}
-                    </div>
-                </form>
-            </div>
+        <div class="nav-links">
+            {% if current_user.is_authenticated %}
+                <span class="desktop-only" style="color:#cbd5e0">Hi, <b>{{ current_user.username }}</b></span>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin_dashboard') }}">Admin</a>
+                {% else %}
+                    <a href="{{ url_for('main.new_chat') }}">Chat Mới</a>
+                {% endif %}
+                <a href="{{ url_for('main.logout') }}" class="logout-btn" onclick="localStorage.removeItem('sessionStart');">Thoát</a>
+            {% endif %}
         </div>
+    </nav>
 
-        <div class="action-panel">
-            <div class="action-title"><i class="fas fa-users"></i> Danh sách Học sinh</div>
-            
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID / Username</th>
-                            <th>Loại Bot</th>
-                            <th>Trạng thái học</th>
-                            <th style="min-width: 200px;">Hành động (Chức năng)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>
-                                <b>{{ user.username }}</b>
-                            </td>
-                            <td>
-                                {% if user.bot_type == 'ai' %}
-                                    <span class="badge badge-ai">AI Coach</span>
-                                {% else %}
-                                    <span class="badge badge-basic">Basic Bot</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if user.current_session_id %}
-                                    <span style="color:#48bb78; font-weight:600;"><i class="fas fa-check-circle"></i> Đã tham gia</span>
-                                {% else %}
-                                    <span style="color:#a0aec0;">Chưa học</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{{ url_for('main.view_chat_history', user_id=user.id) }}" class="btn-info" title="Xem nội dung chat của HS này">
-                                    <i class="fas fa-comments"></i> Chat
-                                </a>
-                                <a href="{{ url_for('main.view_variable_logs', user_id=user.id) }}" class="btn-warning" title="Xem log biến số">
-                                    <i class="fas fa-clipboard-list"></i> Log
-                                </a>
-                                <a href="{{ url_for('main.delete_user', user_id=user.id) }}" class="btn-danger" onclick="return confirm('CẢNH BÁO: Xóa học sinh này sẽ mất toàn bộ lịch sử chat. Bạn có chắc không?');">
-                                    <i class="fas fa-trash"></i> Xóa
-                                </a>
-
-                                <form action="{{ url_for('main.reset_student_password', user_id=user.id) }}" method="POST" style="display:inline-flex; align-items:center; margin-top:5px;">
-                                    {{ reset_form.hidden_tag() }}
-                                    {{ reset_form.new_password(placeholder="Pass mới", style="width:80px; padding:3px; font-size:0.8rem; border:1px solid #cbd5e0; border-radius:4px;") }}
-                                    <button type="submit" style="background:none; border:1px solid #cbd5e0; cursor:pointer; margin-left:2px; border-radius:4px;" title="Lưu mật khẩu mới">
-                                        <i class="fas fa-save" style="color:#2b6cb0;"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" style="text-align:center; padding:30px; color:#718096;">Hệ thống chưa có dữ liệu học sinh nào.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for c, m in messages %}<div class="alert alert-{{ c }}">{{ m }}</div>{% endfor %}{% endif %}
+        {% endwith %}
     </div>
-</div>
-{% endblock %}
+
+    <div class="main-content {% block main_class %}scroll-y{% endblock %}">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="site-footer">
+        <div>Phát triển bởi <b>ThS. Trần Thanh Duy</b></div>
+        <div style="margin-top:5px;"><a href="{{ url_for('main.disclaimer') }}">Cảnh báo & Miễn trừ trách nhiệm</a></div>
+    </footer>
+</body>
+</html>
