@@ -6,19 +6,20 @@
     <title>POWER Biology</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <style>
-        /* CSS CƠ BẢN NHẤT - KHÔNG CAN THIỆP VÀO LAYOUT CON */
         :root { --primary: #667eea; --text-dark: #1a202c; --bg-light: #f7fafc; --header-height: 60px; }
         * { box-sizing: border-box; }
+        
         body {
             font-family: 'Inter', sans-serif; margin: 0; padding: 0;
             background-color: var(--bg-light); color: var(--text-dark);
-            height: 100vh; display: flex; flex-direction: column;
+            /* Layout Flex cột: Header - Main - Footer */
+            display: flex; flex-direction: column; height: 100vh;
         }
-        a { text-decoration: none; color: var(--primary); }
         
-        /* Navbar Cố định */
+        a { text-decoration: none; color: var(--primary); }
+
+        /* Navbar cố định chiều cao */
         .navbar {
             height: var(--header-height); background: #2d3748; color: white;
             display: flex; justify-content: space-between; align-items: center;
@@ -30,34 +31,44 @@
         .logout-btn { background: #e53e3e; padding: 5px 10px; border-radius: 4px; color: white !important; }
 
         /* Flash Messages */
-        .flash-messages { position: fixed; top: 70px; right: 20px; z-index: 2000; }
+        .flash-messages { position: fixed; top: 70px; right: 20px; z-index: 2000; width: 90%; max-width: 400px; }
         .alert { padding: 15px; border-radius: 5px; margin-bottom: 10px; color: white; background: #48bb78; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .alert-danger { background: #f56565; }
 
-        /* Container Chính: Để trống để layout con tự điền vào */
+        /* Main Content: Tự động chiếm khoảng trống còn lại */
         .main-content {
-            flex: 1;
-            position: relative;
+            flex: 1; /* Quan trọng: Đẩy footer xuống đáy */
             width: 100%;
-            height: calc(100vh - var(--header-height)); /* Quan trọng */
-            overflow: hidden; 
+            position: relative;
+            /* overflow sẽ được quy định bởi từng trang con */
+        }
+
+        /* Footer cố định chiều cao (hoặc tự động) */
+        .site-footer {
+            background: #f8f9fa; border-top: 1px solid #e2e8f0;
+            padding: 10px; text-align: center; font-size: 0.8rem; color: #718096;
+            flex-shrink: 0; /* Không bị co lại */
+        }
+
+        /* Responsive Navbar */
+        @media (max-width: 768px) {
+            .desktop-only { display: none; }
         }
     </style>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="{{ url_for('main.index') }}"><i class="fas fa-dna"></i> POWER Biology</a>
+            <a href="{{ url_for('main.index') }}"><i class="fas fa-dna"></i> POWER Bio</a>
         </div>
         <div class="nav-links">
             {% if current_user.is_authenticated %}
-                <span style="color:#cbd5e0">Hi, <b>{{ current_user.username }}</b></span>
+                <span class="desktop-only" style="color:#cbd5e0">Hi, <b>{{ current_user.username }}</b></span>
                 {% if current_user.is_admin %}
                     <a href="{{ url_for('main.admin_dashboard') }}">Admin</a>
                 {% else %}
                     <a href="{{ url_for('main.new_chat') }}">Chat Mới</a>
                 {% endif %}
-                <a href="{{ url_for('main.change_password') }}">Đổi Pass</a>
                 <a href="{{ url_for('main.logout') }}" class="logout-btn" onclick="localStorage.removeItem('sessionStart');">Thoát</a>
             {% endif %}
         </div>
@@ -69,8 +80,13 @@
         {% endwith %}
     </div>
 
-    <div class="main-content">
+    <div class="main-content {% block main_class %}scroll-y{% endblock %}">
         {% block content %}{% endblock %}
     </div>
+
+    <footer class="site-footer">
+        <div>Phát triển bởi <b>ThS. Trần Thanh Duy</b></div>
+        <div style="margin-top:5px;"><a href="{{ url_for('main.disclaimer') }}">Cảnh báo & Miễn trừ trách nhiệm</a></div>
+    </footer>
 </body>
 </html>
