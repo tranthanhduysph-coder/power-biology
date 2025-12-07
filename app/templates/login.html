@@ -1,77 +1,82 @@
 {% extends "base.html" %}
 
+/* Trang Login cần cuộn được */
+{% block main_class %}scroll-y{% endblock %}
+
 {% block content %}
 <style>
-    /* Cấu trúc chia đôi màn hình (Desktop) */
+    /* Cho phép cuộn trang trên vùng nội dung chính */
+    .scroll-y { overflow-y: auto; height: 100%; }
+
     .login-wrapper {
+        min-height: 100%;
         display: flex; justify-content: center; align-items: center;
-        width: 100%; height: 100%; background: #edf2f7; padding: 20px;
+        padding: 40px 20px;
+        background: #edf2f7;
     }
-    .login-container {
+
+    .login-card {
         display: flex; width: 100%; max-width: 900px;
         background: white; border-radius: 16px; overflow: hidden;
         box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        min-height: 500px; /* Chiều cao tối thiểu */
+        min-height: 500px;
     }
 
-    /* Cột trái (Thông tin) */
-    .login-info {
+    /* Cột Trái: Thông tin */
+    .info-panel {
         flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white; padding: 40px; display: flex; flex-direction: column; justify-content: center;
     }
-    /* Cột phải (Form) */
-    .login-form-panel {
+    
+    /* Cột Phải: Form */
+    .form-panel {
         flex: 1; padding: 40px; display: flex; flex-direction: column; justify-content: center;
     }
 
-    /* Form Styles */
     .form-control {
-        width: 100%; padding: 12px; margin-bottom: 15px;
-        border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;
+        width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0;
+        border-radius: 8px; font-size: 1rem;
     }
-    .btn-primary {
-        width: 100%; padding: 12px; background: #667eea; color: white;
-        border: none; border-radius: 8px; font-weight: 700; cursor: pointer;
+    .btn-login {
+        width: 100%; padding: 12px; background: #667eea; color: white; border: none;
+        border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 1rem;
     }
 
-    /* --- MOBILE RESPONSIVE FIX (QUAN TRỌNG) --- */
+    /* --- MOBILE RESPONSIVE FIX --- */
     @media (max-width: 768px) {
-        .login-wrapper { align-items: flex-start; overflow-y: auto; } /* Cho phép cuộn trên đt */
-        .login-container {
-            flex-direction: column; /* Xếp dọc thay vì ngang */
-            height: auto;
-            margin-top: 20px;
-        }
-        .login-info { padding: 30px; min-height: 200px; }
-        .login-form-panel { padding: 30px; }
-        .login-info h1 { font-size: 1.5rem; }
+        .login-wrapper { align-items: flex-start; } /* Để không bị cắt đầu đuôi */
+        .login-card { flex-direction: column; margin-bottom: 20px; } /* Xếp dọc */
+        .info-panel { padding: 30px; min-height: 200px; }
+        .form-panel { padding: 30px; }
     }
 </style>
 
 <div class="login-wrapper">
-    <div class="login-container">
-        <div class="login-info">
+    <div class="login-card">
+        <div class="info-panel">
             <h1 style="margin-top:0;">POWER Biology</h1>
-            <p>Hệ thống Chatbot hỗ trợ tự học Sinh học.</p>
-            <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 0.9rem;">
-                <i class="fas fa-info-circle"></i> <b>Lưu ý:</b><br>
-                Hệ thống AI có thể đưa ra thông tin chưa chính xác. Hãy luôn kiểm chứng.
+            <p style="font-size:1.1rem; line-height:1.6;">Hệ thống Chatbot hỗ trợ học sinh tự học môn Sinh học theo mô hình POWER.</p>
+            <hr style="border-color: rgba(255,255,255,0.3); margin: 20px 0;">
+            <div style="font-size: 0.9rem; background: rgba(255,255,255,0.15); padding: 10px; border-radius: 6px;">
+                <i class="fas fa-exclamation-triangle"></i> Chatbot có thể mắc lỗi. Hãy luôn kiểm chứng thông tin.
             </div>
         </div>
-        
-        <div class="login-form-panel">
-            <h2 style="text-align: center; color: #2d3748; margin-bottom: 20px;">Đăng Nhập</h2>
-            <form method="POST" action="{{ url_for('main.login') }}">
+
+        <div class="form-panel">
+            <h2 style="text-align: center; color:#2d3748; margin-bottom: 30px;">Đăng Nhập</h2>
+            <form method="POST">
                 {{ form.hidden_tag() }}
-                
-                <label style="font-weight:600; color:#4a5568;">Tên đăng nhập</label>
-                {{ form.username(class="form-control", placeholder="Nhập ID") }}
+                <label style="font-weight:600; color:#4a5568;">Tài khoản</label>
+                {{ form.username(class="form-control", placeholder="Nhập ID học sinh") }}
                 
                 <label style="font-weight:600; color:#4a5568;">Mật khẩu</label>
                 {{ form.password(class="form-control", placeholder="Nhập mật khẩu") }}
                 
-                {{ form.submit(class="btn-primary", value="Bắt đầu") }}
+                {{ form.submit(class="btn-login", value="Vào học ngay") }}
             </form>
+            <div style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #a0aec0;">
+                Quên mật khẩu? Liên hệ giáo viên.
+            </div>
         </div>
     </div>
 </div>
