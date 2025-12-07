@@ -1,75 +1,214 @@
 {% extends "base.html" %}
 
+/* QUAN TRỌNG: Cho phép trang Admin cuộn dọc thoải mái */
+{% block main_class %}scroll-y{% endblock %}
+
 {% block content %}
 <style>
-    .admin-wrapper { width: 100%; height: 100%; overflow-y: auto; background-color: #f7fafc; padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; }
+    /* 1. CẤU HÌNH KHUNG SƯỜN */
+    .scroll-y { overflow-y: auto; height: 100%; background: #f0f2f5; }
     
-    /* Table Responsive */
-    .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { min-width: 600px; width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .admin-container {
+        max-width: 1400px; /* Rộng hơn để chứa nhiều nút */
+        margin: 0 auto;
+        padding: 20px;
+        padding-bottom: 100px;
+    }
+
+    /* 2. CÁC KHỐI CHỨC NĂNG (PANEL) */
+    .panel {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #d1d5db; /* Viền rõ ràng */
+    }
+
+    .panel-header {
+        font-size: 1.2rem; font-weight: 700; color: #1f2937;
+        margin-bottom: 15px; padding-bottom: 10px;
+        border-bottom: 2px solid #e5e7eb;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* 3. BUTTONS (TO & RÕ) */
+    .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 10px 16px; border-radius: 6px; font-weight: 600;
+        text-decoration: none; border: none; cursor: pointer; font-size: 0.95rem;
+        white-space: nowrap; /* Không xuống dòng chữ trong nút */
+    }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
     
-    /* Mobile CSS */
-    @media (max-width: 768px) {
-        .admin-wrapper { padding: 10px; }
-        .container { padding: 15px; }
-        .form-grid { grid-template-columns: 1fr; } /* Form xếp 1 cột trên đt */
+    .btn-green { background: #059669; color: white; } /* Export Excel/CSV */
+    .btn-blue { background: #2563eb; color: white; }  /* Upload/Add */
+    .btn-red { background: #dc2626; color: white; }    /* Delete */
+    .btn-purple { background: #7c3aed; color: white; } /* Chat */
+    .btn-orange { background: #d97706; color: white; } /* Logs */
+
+    /* 4. FORM INPUTS */
+    .form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { flex: 1; min-width: 200px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 5px; color: #4b5563; }
+    .form-control {
+        width: 100%; padding: 10px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 1rem;
+    }
+
+    /* 5. BẢNG DỮ LIỆU (QUAN TRỌNG NHẤT CHO MOBILE) */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto; /* Cuộn ngang nếu bảng quá to */
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
     }
     
-    /* Các style khác giữ nguyên như bản cũ */
-    h1, h2 { color: #2d3748; }
-    .form-control { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; margin-bottom: 10px; }
-    .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; }
-    .btn-primary { background: #667eea; }
-    .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
-    .badge-ai { background: #bee3f8; color: #2b6cb0; }
-    .badge-gofai { background: #feebc8; color: #c05621; }
+    table { width: 100%; border-collapse: collapse; min-width: 1000px; /* Ép bảng rộng tối thiểu 1000px để không vỡ */ }
+    
+    th { background: #f3f4f6; padding: 12px; text-align: left; font-weight: 700; color: #374151; border-bottom: 2px solid #d1d5db; }
+    td { padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; color: #1f2937; }
+    tr:hover { background: #f9fafb; }
+
+    /* Action Buttons trong bảng */
+    .action-group { display: flex; gap: 5px; align-items: center; }
+    .btn-sm { padding: 6px 10px; font-size: 0.85rem; }
+
+    /* Form Reset Pass mini */
+    .mini-form { display: flex; gap: 4px; border: 1px solid #e5e7eb; padding: 4px; border-radius: 4px; background: #f9fafb; }
+    .mini-input { width: 80px; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem; }
 </style>
 
-<div class="admin-wrapper">
-    <div class="container">
-        <h1>Admin Dashboard</h1>
+<div class="admin-container">
+    
+    <div class="panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h1 style="margin:0; color:#111827;"><i class="fas fa-shield-alt"></i> ADMIN DASHBOARD</h1>
+                <p style="margin:5px 0 0; color:#6b7280;">Quản trị viên: <b>{{ current_user.username }}</b></p>
+            </div>
+            <a href="{{ url_for('main.export_chat_history') }}" class="btn btn-green">
+                <i class="fas fa-file-download"></i> Tải Dữ liệu Chat (.CSV)
+            </a>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><i class="fas fa-user-plus"></i> Thêm Tài Khoản Học Sinh</div>
         
-        <div style="margin-bottom: 30px; background: #fff; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-            <h2>Thêm Học Sinh</h2>
+        <div style="background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px dashed #3b82f6; margin-bottom: 20px;">
+            <h4 style="margin-top:0; color:#1e40af;">Cách 1: Upload danh sách (Excel/CSV)</h4>
+            <p style="font-size:0.9rem; margin-bottom:10px;">Format file: <code>username, password, bot_type</code></p>
+            
+            <form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                {{ upload_form.hidden_tag() }}
+                {{ upload_form.csv_file(class="form-control", style="max-width:300px; background:white;") }}
+                {{ upload_form.submit(class="btn btn-blue", value="Tải lên ngay") }}
+            </form>
+        </div>
+
+        <div>
+            <h4 style="margin-top:0; color:#374151;">Cách 2: Thêm lẻ từng em</h4>
             <form method="POST">
                 {{ user_form.hidden_tag() }}
-                <label>Username</label>
-                {{ user_form.username(class="form-control") }}
-                <label>Password</label>
-                {{ user_form.password(class="form-control") }}
-                <label>Bot Type</label>
-                {{ user_form.bot_type(class="form-control") }}
-                <div style="margin-top:10px;">
-                    {{ user_form.is_admin() }} <label for="is_admin">Is Admin</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tên đăng nhập (ID)</label>
+                        {{ user_form.username(class="form-control", placeholder="VD: HS01") }}
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu</label>
+                        {{ user_form.password(class="form-control", value="123456") }}
+                    </div>
+                    <div class="form-group">
+                        <label>Loại Chatbot</label>
+                        {{ user_form.bot_type(class="form-control") }}
+                    </div>
+                    <div class="form-group" style="flex: 0 0 auto; display: flex; align-items: center; padding-top: 25px;">
+                        {{ user_form.is_admin() }} <label for="is_admin" style="margin-left:5px; cursor:pointer;">Set Admin?</label>
+                    </div>
+                    <div class="form-group" style="flex: 0 0 auto; padding-top: 22px;">
+                        {{ user_form.submit(class="btn btn-blue", value="Tạo tài khoản") }}
+                    </div>
                 </div>
-                {{ user_form.submit(class="btn btn-primary", style="margin-top:10px; width:100%;") }}
             </form>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-users"></i> Danh Sách Học Sinh ({{ users|length }})</span>
         </div>
 
         <div class="table-responsive">
             <table>
                 <thead>
-                    <tr style="background:#f7fafc;">
-                        <th>User</th>
-                        <th>Type</th>
-                        <th>Action</th>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Tên Đăng Nhập</th>
+                        <th>Loại Bot</th>
+                        <th>Trạng Thái</th>
+                        <th style="width: 450px;">Chức Năng Quản Lý (Full)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in users %}
                     <tr>
-                        <td>{{ user.username }}</td>
-                        <td><span class="badge {{ 'badge-ai' if user.bot_type=='ai' else 'badge-gofai' }}">{{ user.bot_type }}</span></td>
+                        <td>{{ loop.index }}</td>
                         <td>
-                            <a href="{{ url_for('main.delete_user', user_id=user.id) }}" style="color:red;" onclick="return confirm('Xóa?')">Xóa</a>
+                            <b style="font-size:1.05rem;">{{ user.username }}</b>
+                        </td>
+                        <td>
+                            {% if user.bot_type == 'ai' %}
+                                <span style="background:#dbeafe; color:#1e40af; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.8rem;">AI Coach</span>
+                            {% else %}
+                                <span style="background:#fef3c7; color:#92400e; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.8rem;">Basic Bot</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.current_session_id %}
+                                <span style="color:green; font-weight:600;"><i class="fas fa-check"></i> Đã học</span>
+                            {% else %}
+                                <span style="color:#9ca3af;">Chưa vào</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-group">
+                                <a href="{{ url_for('main.view_chat_history', user_id=user.id) }}" class="btn btn-sm btn-purple" title="Xem lịch sử chat">
+                                    <i class="fas fa-comments"></i> Chat
+                                </a>
+                                
+                                <a href="{{ url_for('main.view_variable_logs', user_id=user.id) }}" class="btn btn-sm btn-orange" title="Xem biến số POWER">
+                                    <i class="fas fa-list-ol"></i> Logs
+                                </a>
+
+                                <form action="{{ url_for('main.reset_student_password', user_id=user.id) }}" method="POST" class="mini-form">
+                                    {{ reset_form.hidden_tag() }}
+                                    {{ reset_form.new_password(class="mini-input", placeholder="Pass mới") }}
+                                    <button type="submit" style="border:none; background:transparent; cursor:pointer; color:#2563eb;" title="Lưu">
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                </form>
+
+                                <a href="{{ url_for('main.delete_user', user_id=user.id) }}" class="btn btn-sm btn-red" onclick="return confirm('CẢNH BÁO: Xóa user này sẽ mất hết dữ liệu chat. Bạn chắc chắn chứ?');" title="Xóa tài khoản">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px; color: #6b7280;">
+                            Chưa có dữ liệu. Hãy thêm học sinh ở trên.
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        <p style="margin-top:10px; font-size:0.9rem; color:#6b7280; font-style:italic;">
+            * Mẹo: Trên điện thoại, hãy vuốt bảng sang trái để xem hết các nút chức năng.
+        </p>
     </div>
+
 </div>
 {% endblock %}
