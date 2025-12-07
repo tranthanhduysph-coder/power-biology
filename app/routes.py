@@ -27,13 +27,18 @@ def admin_required(f):
 def get_assistant_response(user_message, bot_type):
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
-        assistant_id = os.environ.get('CHATBOT_AI_ID') if bot_type == 'ai' else os.environ.get('CHATBOT_GOFAI_ID')
+        # --- LOGIC QUYẾT ĐỊNH DÙNG CON BOT NÀO ---
+        if bot_type == 'ai':
+            assistant_id = os.environ.get('CHATBOT_AI_ID') # Con Bot Thông Minh
+        else:
+            assistant_id = os.environ.get('CHATBOT_GOFAI_ID') # Con Bot Cơ Bản
         
-        if not api_key or not assistant_id: return "Lỗi cấu hình OpenAI API."
+        if not api_key or not assistant_id: return "Lỗi cấu hình: Chưa có API Key hoặc Assistant ID."
         
         openai.api_key = api_key
         client = openai
         
+        # Tạo hoặc lấy Thread
         thread_id = current_user.current_thread_id
         if not thread_id:
             thread = client.beta.threads.create()
@@ -41,9 +46,11 @@ def get_assistant_response(user_message, bot_type):
             current_user.current_thread_id = thread_id
             db.session.commit()
         
+        # Gửi tin nhắn
         client.beta.threads.messages.create(thread_id=thread_id, role="user", content=user_message)
         run = client.beta.threads.runs.create(thread_id=thread_id, assistant_id=assistant_id)
         
+        # Chờ phản hồi
         while run.status in ['queued', 'in_progress']:
             time.sleep(0.5)
             run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
@@ -57,8 +64,9 @@ def get_assistant_response(user_message, bot_type):
         return "Hệ thống đang bận."
 
 def handle_chat_logic(bot_type_check):
+    # Bảo vệ: Nếu user là 'gofai' mà cố vào trang 'ai' thì chặn ngay
     if not current_user.is_admin and current_user.bot_type != bot_type_check:
-        return jsonify({'response': "Lỗi quyền truy cập."}), 403
+        return jsonify({'response': "Bạn không có quyền truy cập Bot này."}), 403
 
     user_text = request.form.get('user_input', '').strip()
     file = request.files.get('file')
@@ -72,6 +80,7 @@ def handle_chat_logic(bot_type_check):
     file_html = ""
     file_msg = ""
 
+    # Xử lý File Upload
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
@@ -85,11 +94,14 @@ def handle_chat_logic(bot_type_check):
 
     if not user_text and not file: return jsonify({'response': ""}), 400
 
+    # Lưu User Msg
     user_msg = Message(sender='user', content=user_text + file_html, author=current_user, session_id=sess_id)
     db.session.add(user_msg)
 
+    # Gọi AI (Truyền đúng bot_type để lấy đúng não)
     full_resp = get_assistant_response(user_text + file_msg, bot_type_check)
 
+    # Tách JSON Log điểm số
     ui_text = full_resp
     try:
         if "```json" in full_resp:
@@ -103,11 +115,12 @@ def handle_chat_logic(bot_type_check):
     except Exception as e:
         print(f"Log Error: {e}")
 
+    # Lưu Bot Msg
     bot_msg = Message(sender='assistant', content=full_resp, author=current_user, session_id=sess_id)
     db.session.add(bot_msg)
     db.session.commit()
 
-    return jsonify({'response': full_resp})
+    return jsonify({'response': ui_text})
 
 # --- 3. CÁC ROUTE CƠ BẢN ---
 
@@ -139,6 +152,7 @@ def logout():
 @login_required
 def chatbot_redirect():
     if current_user.is_admin: return redirect(url_for('main.admin_dashboard'))
+    # ĐIỀU HƯỚNG QUAN TRỌNG: Dựa vào bot_type trong DB để chuyển trang
     return redirect(url_for(f'main.chatbot_{current_user.bot_type}'))
 
 def get_user_sessions():
@@ -147,6 +161,7 @@ def get_user_sessions():
     ).filter_by(user_id=current_user.id).group_by(Message.session_id).order_by(desc('last_active')).all()
 
 def render_chat_page(bot_type, bot_name):
+    # Bảo vệ 2 lớp: Chặn nếu user cố tình gõ URL sai
     if not current_user.is_admin and current_user.bot_type != bot_type:
         return redirect(url_for('main.chatbot_redirect'))
     
@@ -170,7 +185,7 @@ def render_chat_page(bot_type, bot_name):
 
 @main.route('/chatbot/ai', methods=['GET', 'POST'])
 @login_required
-def chatbot_ai(): return render_chat_page('ai', "AI Coach")
+def chatbot_ai(): return render_chat_page('ai', "AI Coach (POWER)")
 
 @main.route('/chatbot/gofai', methods=['GET', 'POST'])
 @login_required
@@ -180,6 +195,7 @@ def chatbot_gofai(): return render_chat_page('gofai', "Basic Bot")
 @login_required
 def new_chat():
     current_user.current_session_id = str(uuid.uuid4())
+    # Reset thread để AI quên ngữ cảnh cũ
     try: openai.api_key = os.environ.get('OPENAI_API_KEY'); current_user.current_thread_id = openai.beta.threads.create().id
     except: pass
     db.session.commit()
@@ -210,7 +226,7 @@ def delete_session(session_id):
 @main.route('/disclaimer')
 def disclaimer(): return render_template('disclaimer.html')
 
-# --- 4. ADMIN DASHBOARD & CSV (HOÀN THIỆN) ---
+# --- 4. ADMIN DASHBOARD & CSV (LOGIC MAPPING & XÓA CHỌN) ---
 
 @main.route('/admin', methods=['GET'])
 @login_required
@@ -248,27 +264,14 @@ def batch_create_users():
     if form.validate_on_submit() and form.csv_file.data:
         try:
             file = form.csv_file.data
-            
-            # --- XỬ LÝ FILE MẠNH MẼ (CHỐNG LỖI 500) ---
             file.seek(0)
-            file_content = file.read()
             
-            # Thử giải mã 3 lớp (UTF-8 SIG -> CP1252 -> Latin1)
-            text_content = None
-            for enc in ['utf-8-sig', 'utf-8', 'cp1252', 'latin-1']:
-                try:
-                    text_content = file_content.decode(enc)
-                    break
-                except: continue
+            # 1. Đọc file bất tử (RAM Read)
+            file_content = file.read().decode("utf-8-sig", errors='ignore')
             
-            if not text_content: raise ValueError("Không đọc được định dạng file.")
-
-            # Parse CSV
-            stream = io.StringIO(text_content)
+            stream = io.StringIO(file_content)
             csv_reader = csv.reader(stream)
-            
-            # Bỏ qua dòng Header
-            try: next(csv_reader, None)
+            try: next(csv_reader, None) # Bỏ header
             except: pass
 
             count = 0
@@ -280,15 +283,17 @@ def batch_create_users():
                 
                 r_pass = row[1].strip() if len(row) > 1 and row[1].strip() else "123456"
                 
-                # --- MAPPING DỮ LIỆU THÔNG MINH ---
-                raw_type = row[2].strip().lower() # Chuyển hết về chữ thường
+                # --- 2. LOGIC MAPPING (FIXED) ---
+                raw_type = row[2].strip().lower() # Chuyển về chữ thường
                 
-                if 'ai' in raw_type:
-                    r_type = 'ai' # Nhận diện "AI", "AI Coach"
-                elif 'basic' in raw_type or 'gofai' in raw_type:
-                    r_type = 'gofai' # Nhận diện "GOFAI", "Basic Bot"
+                # Ưu tiên check GOFAI trước
+                if 'gofai' in raw_type or 'basic' in raw_type:
+                    r_type = 'gofai'
+                # Sau đó check AI
+                elif 'ai' in raw_type or 'coach' in raw_type:
+                    r_type = 'ai'
                 else:
-                    r_type = 'gofai' # Mặc định
+                    r_type = 'gofai' # Mặc định nếu viết sai
 
                 if not User.query.filter_by(username=r_user).first():
                     new_user = User(username=r_user, bot_type=r_type)
@@ -297,48 +302,48 @@ def batch_create_users():
                     count += 1
             
             db.session.commit()
-            flash(f'Thành công! Đã thêm {count} học sinh.', 'success')
+            flash(f'Thành công! Đã tạo {count} tài khoản.', 'success')
             
         except Exception as e:
             db.session.rollback()
             print(f"CSV ERROR: {e}")
             flash(f'Lỗi xử lý file: {str(e)}', 'danger')
     else:
-        flash('Vui lòng chọn file CSV.', 'warning')
+        flash('Vui lòng chọn file CSV hợp lệ.', 'warning')
         
     return redirect(url_for('main.admin_dashboard'))
 
-# --- XÓA HÀNG LOẠT THEO DANH SÁCH CHỌN ---
+# --- XÓA CÁC USER ĐÃ CHỌN (TÍNH NĂNG MỚI) ---
 @main.route('/admin/delete_selected', methods=['POST'])
 @login_required
 @admin_required
 def delete_selected_users():
-    user_ids = request.form.getlist('user_ids') # Lấy danh sách ID từ checkbox
+    user_ids = request.form.getlist('user_ids') # Nhận list ID từ checkbox
     
     if not user_ids:
-        flash('Bạn chưa chọn học sinh nào!', 'warning')
+        flash('Chưa chọn học sinh nào!', 'warning')
         return redirect(url_for('main.admin_dashboard'))
 
     try:
         deleted_count = 0
         for uid in user_ids:
             u = User.query.get(int(uid))
-            if u and not u.is_admin: # Không cho xóa admin
-                # Xóa dữ liệu liên quan
+            # Không cho xóa Admin
+            if u and not u.is_admin: 
                 Message.query.filter_by(user_id=u.id).delete()
                 VariableLog.query.filter_by(user_id=u.id).delete()
                 db.session.delete(u)
                 deleted_count += 1
         
         db.session.commit()
-        flash(f'Đã xóa {deleted_count} học sinh.', 'success')
+        flash(f'Đã xóa {deleted_count} học sinh đã chọn.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Lỗi xóa: {str(e)}', 'danger')
+        flash(f'Lỗi khi xóa: {str(e)}', 'danger')
 
     return redirect(url_for('main.admin_dashboard'))
 
-# --- CÁC ROUTE ADMIN KHÁC ---
+# --- CÁC ROUTE ADMIN KHÁC (GIỮ NGUYÊN) ---
 
 @main.route('/admin/delete/<int:user_id>')
 @login_required
