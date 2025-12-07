@@ -1,106 +1,199 @@
 {% extends "base.html" %}
 
+/* Trang Chat sẽ tự quản lý thanh cuộn để giữ giao diện cố định như App */
 {% block main_class %}no-scroll{% endblock %}
 
 {% block content %}
 <style>
-    /* --- KHUNG SƯỜN --- */
+    /* --- 1. KHUNG SƯỜN CHÍNH --- */
     .no-scroll { overflow: hidden; height: 100%; }
-    .chat-layout { display: flex; width: 100%; height: 100%; position: relative; }
-
-    /* --- SIDEBAR --- */
-    .sidebar {
-        width: 300px; min-width: 300px; background: #f8fafc; border-right: 1px solid #e2e8f0;
-        display: flex; flex-direction: column; height: 100%; z-index: 50; transition: transform 0.3s ease;
+    
+    .chat-layout {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        position: relative;
+        background-color: white;
     }
-    .clock-widget { background: #2d3748; color: white; padding: 20px; text-align: center; border-bottom: 4px solid #667eea; }
+
+    /* --- 2. SIDEBAR (CỘT TRÁI) --- */
+    .sidebar {
+        width: 300px;
+        min-width: 300px;
+        background: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        z-index: 50; /* Để nổi lên trên khi ở mobile */
+        transition: transform 0.3s ease;
+    }
+
+    /* Đồng hồ */
+    .clock-widget {
+        background: #2d3748; color: white; padding: 20px;
+        text-align: center; border-bottom: 4px solid #667eea;
+        flex-shrink: 0;
+    }
     .clock-display { font-family: monospace; font-size: 2rem; font-weight: 700; color: #63b3ed; }
-    .history-section { flex: 1; overflow-y: auto; padding: 15px; }
-    .sidebar-footer { padding: 15px; border-top: 1px solid #e2e8f0; background: white; }
-    .session-item { display: block; padding: 10px; margin-bottom: 5px; border: 1px solid #e2e8f0; border-radius: 6px; color: #4a5568; text-decoration: none; position: relative; }
+    .clock-label { font-size: 0.8rem; text-transform: uppercase; color: #a0aec0; margin-top: 5px; }
+
+    /* Danh sách lịch sử */
+    .history-section {
+        flex: 1; overflow-y: auto; padding: 15px;
+    }
+    
+    .new-chat-btn {
+        display: block; width: 100%; padding: 10px; margin-bottom: 15px;
+        background: #667eea; color: white; text-align: center; border-radius: 8px;
+        font-weight: 600; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .new-chat-btn:hover { background: #5a67d8; }
+
+    .session-item {
+        display: block; padding: 10px; margin-bottom: 5px;
+        border: 1px solid #e2e8f0; border-radius: 6px;
+        color: #4a5568; text-decoration: none; position: relative;
+        font-size: 0.9rem; transition: 0.2s;
+    }
     .session-item:hover { background: #edf2f7; }
     .session-item.active { background: #ebf8ff; border-color: #bee3f8; color: #2b6cb0; font-weight: 700; }
 
-    /* Nút Khảo sát */
-    .survey-box { margin-top: 10px; opacity: 0.3; pointer-events: none; filter: grayscale(1); transition: 0.5s; }
-    .survey-box.active { opacity: 1; pointer-events: auto; filter: grayscale(0); animation: pulse 2s infinite; }
-    .survey-btn { display: block; width: 100%; padding: 10px; text-align: center; border: 2px solid #d69e2e; border-radius: 8px; color: #d69e2e; font-weight: 700; }
+    /* Footer Sidebar */
+    .sidebar-footer {
+        padding: 15px; border-top: 1px solid #e2e8f0; background: white; flex-shrink: 0;
+    }
+
+    /* Nút Khảo sát (Logic ẩn hiện) */
+    .survey-box {
+        margin-top: 10px; opacity: 0.3; pointer-events: none; filter: grayscale(1); transition: 0.5s;
+    }
+    .survey-box.active {
+        opacity: 1; pointer-events: auto; filter: grayscale(0); animation: pulse 2s infinite;
+    }
+    .survey-btn {
+        display: block; width: 100%; padding: 12px; text-align: center;
+        border: 2px solid #d69e2e; border-radius: 8px; color: #d69e2e; font-weight: 700;
+        text-decoration: none;
+    }
     @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.03);} 100% {transform: scale(1);} }
 
-    /* --- CHAT AREA --- */
-    .chat-area { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; background: white; }
-    .chat-header { padding: 0 15px; height: 60px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; background: white; }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 130px; }
-    
-    /* Tin nhắn */
+    /* --- 3. CHAT AREA (CỘT PHẢI) --- */
+    .chat-area {
+        flex: 1; display: flex; flex-direction: column; height: 100%; position: relative;
+    }
+
+    .chat-header {
+        padding: 0 15px; height: 60px; border-bottom: 1px solid #eee;
+        display: flex; align-items: center; justify-content: space-between;
+        background: white; flex-shrink: 0;
+    }
+
+    .chat-messages {
+        flex: 1; overflow-y: auto; padding: 20px;
+        padding-bottom: 140px; /* Chừa chỗ cho input area */
+        background: #fff;
+    }
+
+    /* Bong bóng chat */
     .msg { display: flex; gap: 10px; margin-bottom: 15px; max-width: 85%; }
     .msg.user { margin-left: auto; flex-direction: row-reverse; }
-    .msg .bubble { padding: 12px 16px; border-radius: 12px; line-height: 1.5; word-wrap: break-word; }
-    .msg.user .bubble { background: #667eea; color: white; }
-    .msg.assistant .bubble { background: #f1f5f9; color: #1a202c; }
+    
+    .msg .bubble {
+        padding: 12px 16px; border-radius: 12px; line-height: 1.5; word-wrap: break-word;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .msg.user .bubble { background: #667eea; color: white; border-top-right-radius: 2px; }
+    .msg.assistant .bubble { background: #f1f5f9; color: #1a202c; border-top-left-radius: 2px; }
+    
+    /* Ảnh trong tin nhắn */
     .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; border: 1px solid #ddd; }
     
-    /* Hiển thị file đính kèm trong tin nhắn */
+    /* File đính kèm */
     .file-attachment {
-        display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05);
-        padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.9rem;
+        display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1);
+        padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.85rem;
+    }
+    .msg.user .file-attachment { background: rgba(255,255,255,0.2); color: white; }
+
+    /* --- 4. INPUT AREA (THANH NHẬP LIỆU) --- */
+    .input-wrapper {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        padding: 10px 15px; background: rgba(255,255,255,0.98);
+        border-top: 1px solid #e2e8f0; z-index: 10;
     }
 
-    /* --- INPUT AREA --- */
-    .input-wrapper { 
-        position: absolute; bottom: 0; left: 0; right: 0; 
-        padding: 15px; background: rgba(255,255,255,0.98); border-top: 1px solid #e2e8f0; 
+    /* Preview Box (Xem trước ảnh/file) */
+    #preview-box {
+        display: none; padding: 8px; margin-bottom: 8px;
+        background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 8px;
     }
-    
-    /* Vùng Preview (Ảnh hoặc File) */
-    #preview-box { display: none; padding: 8px; margin-bottom: 8px; background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 8px; }
     #preview-content { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #4a5568; }
-    #preview-img { height: 60px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
+    #preview-img { height: 70px; border-radius: 6px; display: none; }
     #preview-icon { font-size: 1.5rem; color: #667eea; display: none; }
 
-    .input-group { display: flex; gap: 10px; align-items: flex-end; }
+    /* Input Group */
+    .input-group { display: flex; gap: 8px; align-items: flex-end; }
+
+    /* Nút Icon Tròn */
+    .icon-btn {
+        width: 40px; height: 40px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: 0.2s; flex-shrink: 0; font-size: 1.1rem;
+        border: none;
+    }
     
-    /* Nút Upload Đa Năng (+) */
-    .upload-btn {
-        width: 40px; height: 40px; border-radius: 50%; 
-        background: #e2e8f0; color: #4a5568;
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; transition: 0.2s; flex-shrink: 0;
-    }
-    .upload-btn:hover { background: #cbd5e0; color: #2d3748; }
+    .file-btn { background: #edf2f7; color: #4a5568; } /* Kẹp giấy */
+    .file-btn:hover { background: #e2e8f0; color: #2d3748; }
 
-    .text-box-container {
-        flex: 1; background: #f0f2f5; border-radius: 20px; padding: 8px 15px;
-        border: 1px solid transparent; transition: 0.2s;
-    }
-    .text-box-container:focus-within { background: white; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.1); }
-    textarea { width: 100%; border: none; background: transparent; outline: none; resize: none; max-height: 100px; font-size: 1rem; line-height: 1.4; }
+    .camera-btn { background: #ebf8ff; color: #3182ce; } /* Camera */
+    .camera-btn:hover { background: #bee3f8; color: #2c5282; }
 
-    .send-btn {
-        width: 40px; height: 40px; border-radius: 50%; border: none;
-        background: #667eea; color: white; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        transition: 0.2s; flex-shrink: 0;
-    }
+    .send-btn { background: #667eea; color: white; } /* Gửi */
     .send-btn:hover { background: #5a67d8; transform: scale(1.05); }
 
-    /* Mobile */
-    .menu-toggle { display: none; font-size: 1.4rem; cursor: pointer; color: #2d3748; margin-right: 15px; }
-    .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; }
-    @media (max-width: 768px) {
-        .menu-toggle { display: block; }
-        .sidebar { position: absolute; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.1); }
-        .sidebar.open { transform: translateX(0); }
-        .overlay.show { display: block; }
+    /* Ô Textarea */
+    .text-box-container {
+        flex: 1; background: #f0f2f5; border-radius: 20px; padding: 10px 15px;
+        border: 1px solid transparent; transition: 0.2s;
+    }
+    .text-box-container:focus-within {
+        background: white; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.1);
+    }
+    textarea {
+        width: 100%; border: none; background: transparent; outline: none;
+        resize: none; max-height: 100px; font-size: 1rem; padding: 0; margin: 0;
     }
 
-    /* Dark Mode */
+    /* --- 5. MOBILE RESPONSIVE --- */
+    .menu-toggle { display: none; font-size: 1.4rem; cursor: pointer; color: #2d3748; margin-right: 15px; }
+    .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; }
+
+    @media (max-width: 768px) {
+        .menu-toggle { display: block; } /* Hiện nút Hamburger */
+        
+        .sidebar {
+            position: absolute; top: 0; left: 0; height: 100%;
+            transform: translateX(-100%); /* Ẩn sang trái */
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+        }
+        .sidebar.open { transform: translateX(0); } /* Trượt ra */
+        .overlay.show { display: block; } /* Hiện nền tối */
+
+        /* Tinh chỉnh input trên mobile */
+        .icon-btn { width: 36px; height: 36px; font-size: 1rem; }
+        .text-box-container { padding: 8px 12px; }
+    }
+
+    /* --- 6. DARK MODE --- */
     body.dark-mode .sidebar { background: #171923; border-color: #2d3748; }
+    body.dark-mode .clock-widget { border-bottom-color: #48bb78; }
     body.dark-mode .chat-area, body.dark-mode .chat-messages { background: #1a202c; }
+    body.dark-mode .chat-header { background: #171923; border-color: #2d3748; color: white; }
     body.dark-mode .input-wrapper { background: #171923; border-color: #2d3748; }
     body.dark-mode .text-box-container { background: #2d3748; }
     body.dark-mode textarea { color: white; }
-    body.dark-mode .upload-btn { background: #2d3748; color: #a0aec0; }
+    body.dark-mode .icon-btn { background: #2d3748; color: #a0aec0; }
     body.dark-mode .session-item { background: #2d3748; border-color: #4a5568; color: #cbd5e0; }
     body.dark-mode .msg.assistant .bubble { background: #2d3748; color: #e2e8f0; }
     body.dark-mode #preview-box { background: #2d3748; border-color: #4a5568; }
@@ -110,23 +203,34 @@
 <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
 <div class="chat-layout">
+    
     <div class="sidebar" id="sidebar">
-        <div class="clock-widget"><div class="clock-display" id="timer">00:00:00</div><div class="clock-label">Thời gian học</div></div>
+        <div class="clock-widget">
+            <div class="clock-display" id="timer">00:00:00</div>
+            <div class="clock-label">Thời gian học</div>
+        </div>
+
         <div class="history-section">
-            <a href="{{ url_for('main.new_chat') }}" style="display:block; text-align:center; padding:10px; background:#667eea; color:white; border-radius:6px; margin-bottom:15px; font-weight:600; text-decoration:none;">+ Chat Mới</a>
+            <a href="{{ url_for('main.new_chat') }}" class="new-chat-btn">+ Chat Mới</a>
+            
             {% if session_list %}
                 {% for sess in session_list %}
                 <div style="position:relative;">
                     <a href="{{ url_for('main.switch_session', session_id=sess.id) }}" class="session-item {{ 'active' if sess.active else '' }}">
                         <span style="display:inline-block; max-width:180px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; vertical-align:middle;">{{ sess.name }}</span>
                     </a>
-                    <a href="{{ url_for('main.delete_session', session_id=sess.id) }}" onclick="return confirm('Xóa?')" style="position:absolute; right:10px; top:12px; color:#a0aec0;"><i class="fas fa-trash"></i></a>
+                    <a href="{{ url_for('main.delete_session', session_id=sess.id) }}" onclick="return confirm('Xóa hội thoại này?')" style="position:absolute; right:10px; top:12px; color:#a0aec0;">
+                        <i class="fas fa-trash"></i>
+                    </a>
                 </div>
                 {% endfor %}
             {% endif %}
         </div>
+
         <div class="sidebar-footer">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Giao diện</span> <i class="fas fa-moon" id="theme-btn" style="cursor:pointer;"></i></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:#718096;">
+                <span>Giao diện</span> <i class="fas fa-moon" id="theme-btn" style="cursor:pointer;"></i>
+            </div>
             <div id="survey-box" class="survey-box">
                 <a href="https://forms.gle/kZatDxVXLnHnDbPE9" class="survey-btn" id="survey-link" target="_blank">Làm Khảo Sát</a>
                 <div style="text-align:center; font-size:0.7rem; color:#a0aec0; margin-top:5px;">Mở sau 20 phút</div>
@@ -138,7 +242,9 @@
         <div class="chat-header">
             <div style="display:flex; align-items:center;">
                 <i class="fas fa-bars menu-toggle" onclick="toggleMenu()"></i>
-                <i class="fas fa-robot" style="color:#667eea; margin-right:8px;"></i><b>{{ bot_name }}</b>
+                
+                <i class="fas fa-robot" style="color:#667eea; margin-right:8px;"></i>
+                <b>{{ bot_name }}</b>
             </div>
             <div style="font-size:0.8rem; color:#48bb78;"><i class="fas fa-circle" style="font-size:8px;"></i> Online</div>
         </div>
@@ -151,7 +257,9 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <div style="text-align:center; margin-top:50px; color:#a0aec0;"><i class="fas fa-comment-dots" style="font-size:3rem;"></i><p>Sẵn sàng hỗ trợ!</p></div>
+                <div style="text-align:center; margin-top:50px; color:#a0aec0;">
+                    <i class="fas fa-comment-dots" style="font-size:3rem;"></i><p>Sẵn sàng hỗ trợ!</p>
+                </div>
             {% endif %}
             <div class="msg assistant" id="typing" style="display:none;"><div class="bubble">...</div></div>
         </div>
@@ -159,7 +267,8 @@
         <div class="input-wrapper">
             <div id="preview-box">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <small>Đính kèm:</small> <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="clearFile()"></i>
+                    <small>Đính kèm:</small> 
+                    <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="clearFile()"></i>
                 </div>
                 <div id="preview-content">
                     <img id="preview-img" src="">
@@ -169,32 +278,45 @@
             </div>
 
             <form id="chat-form" class="input-group">
-                <label for="file-up" class="upload-btn" title="Gửi file/ảnh">
-                    <i class="fas fa-plus"></i>
-                </label>
-                <input type="file" id="file-up" name="file" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt" style="display:none;">
                 
+                <label for="file-up" class="icon-btn file-btn" title="Gửi tài liệu (PDF, Word, Txt)">
+                    <i class="fas fa-paperclip"></i>
+                </label>
+                <input type="file" id="file-up" name="file" accept=".pdf,.doc,.docx,.txt" style="display:none;">
+
+                <label for="camera-up" class="icon-btn camera-btn" title="Gửi ảnh / Chụp ảnh">
+                    <i class="fas fa-camera"></i>
+                </label>
+                <input type="file" id="camera-up" name="camera" accept="image/*" capture="environment" style="display:none;">
+
                 <div class="text-box-container">
                     <textarea id="msg-input" name="user_input" rows="1" placeholder="Nhập tin nhắn..."></textarea>
                 </div>
                 
-                <button type="submit" class="send-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
+                <button type="submit" class="icon-btn send-btn" id="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    // 1. CLEAN JSON (Lưới lọc)
-    function cleanJSON(text) { return text ? text.replace(/```json[\s\S]*?```/g, "").trim() : ""; }
+    // --- 1. LỌC JSON (ẨN ĐIỂM SỐ KHỎI HỌC SINH) ---
+    function cleanJSON(text) {
+        if (!text) return "";
+        // Regex tìm và xóa đoạn code JSON
+        return text.replace(/```json[\s\S]*?```/g, "").trim();
+    }
     
+    // Khi load trang, lọc tin nhắn cũ
     document.addEventListener("DOMContentLoaded", () => {
         const rawMsgs = document.querySelectorAll('.raw-content');
         rawMsgs.forEach(el => {
             const cleanContent = cleanJSON(el.innerHTML);
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
-            bubble.innerHTML = cleanContent;
+            bubble.innerHTML = cleanContent; // Render HTML (để hiển thị ảnh cũ)
             el.parentNode.appendChild(bubble);
             el.remove();
         });
@@ -202,16 +324,24 @@
         if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // 2. FILE HANDLING (ĐA NĂNG)
+    // --- 2. XỬ LÝ 2 NÚT UPLOAD (FILE & CAMERA) ---
     const fileUp = document.getElementById('file-up');
+    const cameraUp = document.getElementById('camera-up');
+    let currentInput = null; // Biến nhớ xem user chọn cái nào
+
     const previewBox = document.getElementById('preview-box');
     const previewImg = document.getElementById('preview-img');
     const previewIcon = document.getElementById('preview-icon');
     const previewName = document.getElementById('preview-name');
 
-    fileUp.onchange = function() {
-        const file = this.files[0];
+    function handleFileSelect(inputElement) {
+        const file = inputElement.files[0];
         if(file) {
+            // Reset input kia
+            if(inputElement === fileUp) cameraUp.value = '';
+            else fileUp.value = '';
+            
+            currentInput = inputElement;
             previewBox.style.display = 'block';
             previewName.textContent = file.name;
             
@@ -225,36 +355,48 @@
                 }
                 reader.readAsDataURL(file);
             } else {
-                // Nếu là file khác (PDF, Doc...) -> Hiện icon
+                // Nếu là tài liệu -> Hiện Icon
                 previewImg.style.display = 'none';
                 previewIcon.style.display = 'block';
-                // Đổi icon tùy loại file
                 if(file.name.includes('pdf')) previewIcon.className = 'fas fa-file-pdf';
                 else if(file.name.includes('doc')) previewIcon.className = 'fas fa-file-word';
                 else previewIcon.className = 'fas fa-file-alt';
             }
         }
-    };
-    function clearFile() { fileUp.value=''; previewBox.style.display='none'; }
+    }
 
-    // 3. SEND & ENTER
+    fileUp.onchange = function() { handleFileSelect(this); };
+    cameraUp.onchange = function() { handleFileSelect(this); };
+
+    function clearFile() { 
+        fileUp.value=''; cameraUp.value=''; 
+        previewBox.style.display='none'; 
+        currentInput = null;
+    }
+
+    // --- 3. GỬI TIN & ENTER (FIX PC) ---
     const input = document.getElementById('msg-input');
     const sendBtn = document.getElementById('send-btn');
     const form = document.getElementById('chat-form');
     const typing = document.getElementById('typing');
     const chatBox = document.getElementById('chat-box');
 
+    // Sự kiện Enter
     input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.click(); // Kích hoạt nút gửi
+        }
     });
 
     form.onsubmit = async (e) => {
         e.preventDefault();
         const text = input.value.trim();
-        const file = fileUp.files[0];
+        const file = currentInput ? currentInput.files[0] : null;
+
         if(!text && !file) return;
 
-        // Render tin nhắn user
+        // 1. Hiển thị User Msg
         let userContent = text;
         if(file) {
             if(file.type.startsWith('image/')) {
@@ -265,9 +407,11 @@
         }
         appendMsg('user', userContent);
 
+        // 2. Reset & Loading
         input.value = ''; clearFile(); 
         typing.style.display = 'flex'; chatBox.scrollTop = chatBox.scrollHeight;
 
+        // 3. Gửi Ajax
         const fd = new FormData();
         fd.append('user_input', text);
         if(file) fd.append('file', file);
@@ -276,8 +420,12 @@
             const res = await fetch('{{ endpoint }}', { method:'POST', body:fd });
             const data = await res.json();
             typing.style.display = 'none';
+            // 4. Lọc JSON trước khi hiện lời AI
             appendMsg('assistant', cleanJSON(data.response));
-        } catch { typing.style.display = 'none'; appendMsg('assistant', 'Lỗi kết nối.'); }
+        } catch {
+            typing.style.display = 'none';
+            appendMsg('assistant', 'Lỗi kết nối server.');
+        }
     };
 
     function appendMsg(role, html) {
@@ -287,14 +435,22 @@
         chatBox.insertBefore(div, typing);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-    input.oninput = function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; };
+    
+    // Auto-resize textarea
+    input.oninput = function() {
+        this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';
+    };
 
-    // 4. CÁC FUNCTION KHÁC (GIỮ NGUYÊN)
-    function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+    // --- 4. TIỆN ÍCH (MENU, TIMER, THEME) ---
+    function toggleMenu() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('show');
+    }
+
     const timerDisplay = document.getElementById('timer');
     const surveyBox = document.getElementById('survey-box');
     const surveyLink = document.getElementById('survey-link');
-    const REQ_SEC = 20 * 60;
+    const REQ_SEC = 20 * 60; // 20 phút
     
     function startTimer() {
         let start = localStorage.getItem('sessionStart');
@@ -305,10 +461,17 @@
             const m=Math.floor((elapsed%3600)/60).toString().padStart(2,'0');
             const s=(elapsed%60).toString().padStart(2,'0');
             if(timerDisplay) timerDisplay.innerText=`${h}:${m}:${s}`;
+            
             if(elapsed>=REQ_SEC && surveyBox) surveyBox.classList.add('active');
         }, 1000);
     }
-    if(surveyLink) surveyLink.onclick = e => { if(!surveyBox.classList.contains('active')) { e.preventDefault(); alert('Chưa đủ giờ học!'); return; } if(!confirm('Đã học xong chưa?')) e.preventDefault(); };
+    
+    if(surveyLink) {
+        surveyLink.onclick = e => {
+            if(!surveyBox.classList.contains('active')) { e.preventDefault(); alert('Chưa đủ giờ học!'); return; }
+            if(!confirm('Xác nhận: Em đã hoàn thành bài học?')) e.preventDefault();
+        };
+    }
     startTimer();
 
     const themeBtn = document.getElementById('theme-btn');
