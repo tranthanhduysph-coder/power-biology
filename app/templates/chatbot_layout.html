@@ -1,34 +1,22 @@
 {% extends "base.html" %}
 
-/* Trang Chat không dùng scroll của body mà dùng scroll nội bộ */
 {% block main_class %}no-scroll{% endblock %}
 
 {% block content %}
 <style>
-    /* Khóa cuộn cấp cha để chat layout tự xử lý */
+    /* --- KHUNG SƯỜN --- */
     .no-scroll { overflow: hidden; height: 100%; }
-
-    /* Layout Chat: Chiếm toàn bộ không gian của main-content */
-    .chat-layout {
-        display: flex; width: 100%; height: 100%; position: relative;
-    }
+    .chat-layout { display: flex; width: 100%; height: 100%; position: relative; }
 
     /* --- SIDEBAR --- */
     .sidebar {
-        width: 300px; min-width: 300px;
-        background: #f8fafc; border-right: 1px solid #e2e8f0;
-        display: flex; flex-direction: column;
-        height: 100%; z-index: 50;
-        transition: transform 0.3s ease;
+        width: 300px; min-width: 300px; background: #f8fafc; border-right: 1px solid #e2e8f0;
+        display: flex; flex-direction: column; height: 100%; z-index: 50; transition: transform 0.3s ease;
     }
-    
-    /* Các thành phần con Sidebar */
     .clock-widget { background: #2d3748; color: white; padding: 20px; text-align: center; border-bottom: 4px solid #667eea; }
     .clock-display { font-family: monospace; font-size: 2rem; font-weight: 700; color: #63b3ed; }
-    
     .history-section { flex: 1; overflow-y: auto; padding: 15px; }
     .sidebar-footer { padding: 15px; border-top: 1px solid #e2e8f0; background: white; }
-
     .session-item { display: block; padding: 10px; margin-bottom: 5px; border: 1px solid #e2e8f0; border-radius: 6px; color: #4a5568; text-decoration: none; position: relative; }
     .session-item:hover { background: #edf2f7; }
     .session-item.active { background: #ebf8ff; border-color: #bee3f8; color: #2b6cb0; font-weight: 700; }
@@ -41,35 +29,68 @@
 
     /* --- CHAT AREA --- */
     .chat-area { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; background: white; }
-    .chat-header { padding: 0 15px; height: 50px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; background: white; }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 120px; } /* Để khoảng trống cho input */
+    .chat-header { padding: 0 15px; height: 60px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; background: white; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 130px; }
     
     /* Tin nhắn */
     .msg { display: flex; gap: 10px; margin-bottom: 15px; max-width: 85%; }
     .msg.user { margin-left: auto; flex-direction: row-reverse; }
-    .msg .bubble { padding: 10px 14px; border-radius: 10px; line-height: 1.5; word-wrap: break-word; }
+    .msg .bubble { padding: 12px 16px; border-radius: 12px; line-height: 1.5; word-wrap: break-word; }
     .msg.user .bubble { background: #667eea; color: white; }
-    .msg.assistant .bubble { background: #f1f5f9; color: #333; }
+    .msg.assistant .bubble { background: #f1f5f9; color: #1a202c; }
     .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; border: 1px solid #ddd; }
-
-    /* Input Area */
-    .input-wrapper { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px; background: rgba(255,255,255,0.95); border-top: 1px solid #eee; }
     
-    /* Image Preview */
-    #img-preview-box { display: none; padding: 5px; margin-bottom: 5px; background: #f7fafc; border: 1px dashed #cbd5e0; border-radius: 5px; }
-    #preview-img { height: 60px; border-radius: 4px; }
+    /* Hiển thị file đính kèm trong tin nhắn */
+    .file-attachment {
+        display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05);
+        padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.9rem;
+    }
 
-    .input-group { display: flex; gap: 8px; align-items: flex-end; background: #f7fafc; padding: 8px; border-radius: 20px; border: 1px solid #e2e8f0; }
-    textarea { width: 100%; border: none; background: transparent; outline: none; resize: none; max-height: 80px; padding: 5px; font-size: 1rem; }
+    /* --- INPUT AREA --- */
+    .input-wrapper { 
+        position: absolute; bottom: 0; left: 0; right: 0; 
+        padding: 15px; background: rgba(255,255,255,0.98); border-top: 1px solid #e2e8f0; 
+    }
+    
+    /* Vùng Preview (Ảnh hoặc File) */
+    #preview-box { display: none; padding: 8px; margin-bottom: 8px; background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 8px; }
+    #preview-content { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #4a5568; }
+    #preview-img { height: 60px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
+    #preview-icon { font-size: 1.5rem; color: #667eea; display: none; }
 
-    /* --- MOBILE RESPONSIVE --- */
+    .input-group { display: flex; gap: 10px; align-items: flex-end; }
+    
+    /* Nút Upload Đa Năng (+) */
+    .upload-btn {
+        width: 40px; height: 40px; border-radius: 50%; 
+        background: #e2e8f0; color: #4a5568;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: 0.2s; flex-shrink: 0;
+    }
+    .upload-btn:hover { background: #cbd5e0; color: #2d3748; }
+
+    .text-box-container {
+        flex: 1; background: #f0f2f5; border-radius: 20px; padding: 8px 15px;
+        border: 1px solid transparent; transition: 0.2s;
+    }
+    .text-box-container:focus-within { background: white; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.1); }
+    textarea { width: 100%; border: none; background: transparent; outline: none; resize: none; max-height: 100px; font-size: 1rem; line-height: 1.4; }
+
+    .send-btn {
+        width: 40px; height: 40px; border-radius: 50%; border: none;
+        background: #667eea; color: white; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: 0.2s; flex-shrink: 0;
+    }
+    .send-btn:hover { background: #5a67d8; transform: scale(1.05); }
+
+    /* Mobile */
     .menu-toggle { display: none; font-size: 1.4rem; cursor: pointer; color: #2d3748; margin-right: 15px; }
     .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; }
-
     @media (max-width: 768px) {
-        .menu-toggle { display: block; } /* Hiện nút menu */
+        .menu-toggle { display: block; }
         .sidebar { position: absolute; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.1); }
-        .sidebar.open { transform: translateX(0); } /* Trượt ra */
+        .sidebar.open { transform: translateX(0); }
         .overlay.show { display: block; }
     }
 
@@ -77,21 +98,22 @@
     body.dark-mode .sidebar { background: #171923; border-color: #2d3748; }
     body.dark-mode .chat-area, body.dark-mode .chat-messages { background: #1a202c; }
     body.dark-mode .input-wrapper { background: #171923; border-color: #2d3748; }
-    body.dark-mode .input-group { background: #2d3748; border-color: #4a5568; }
+    body.dark-mode .text-box-container { background: #2d3748; }
     body.dark-mode textarea { color: white; }
+    body.dark-mode .upload-btn { background: #2d3748; color: #a0aec0; }
     body.dark-mode .session-item { background: #2d3748; border-color: #4a5568; color: #cbd5e0; }
+    body.dark-mode .msg.assistant .bubble { background: #2d3748; color: #e2e8f0; }
+    body.dark-mode #preview-box { background: #2d3748; border-color: #4a5568; }
+    body.dark-mode #preview-content { color: #e2e8f0; }
 </style>
 
 <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
 <div class="chat-layout">
     <div class="sidebar" id="sidebar">
-        <div class="clock-widget">
-            <div class="clock-display" id="timer">00:00:00</div>
-            <div class="clock-label">Thời gian học</div>
-        </div>
+        <div class="clock-widget"><div class="clock-display" id="timer">00:00:00</div><div class="clock-label">Thời gian học</div></div>
         <div class="history-section">
-            <a href="{{ url_for('main.new_chat') }}" style="display:block; text-align:center; padding:10px; background:#667eea; color:white; border-radius:6px; margin-bottom:15px; text-decoration:none; font-weight:600;">+ Chat Mới</a>
+            <a href="{{ url_for('main.new_chat') }}" style="display:block; text-align:center; padding:10px; background:#667eea; color:white; border-radius:6px; margin-bottom:15px; font-weight:600; text-decoration:none;">+ Chat Mới</a>
             {% if session_list %}
                 {% for sess in session_list %}
                 <div style="position:relative;">
@@ -104,9 +126,7 @@
             {% endif %}
         </div>
         <div class="sidebar-footer">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span>Giao diện</span> <i class="fas fa-moon" id="theme-btn" style="cursor:pointer;"></i>
-            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Giao diện</span> <i class="fas fa-moon" id="theme-btn" style="cursor:pointer;"></i></div>
             <div id="survey-box" class="survey-box">
                 <a href="https://forms.gle/kZatDxVXLnHnDbPE9" class="survey-btn" id="survey-link" target="_blank">Làm Khảo Sát</a>
                 <div style="text-align:center; font-size:0.7rem; color:#a0aec0; margin-top:5px;">Mở sau 20 phút</div>
@@ -118,8 +138,7 @@
         <div class="chat-header">
             <div style="display:flex; align-items:center;">
                 <i class="fas fa-bars menu-toggle" onclick="toggleMenu()"></i>
-                <i class="fas fa-robot" style="color:#667eea; margin-right:8px;"></i>
-                <b>{{ bot_name }}</b>
+                <i class="fas fa-robot" style="color:#667eea; margin-right:8px;"></i><b>{{ bot_name }}</b>
             </div>
             <div style="font-size:0.8rem; color:#48bb78;"><i class="fas fa-circle" style="font-size:8px;"></i> Online</div>
         </div>
@@ -127,7 +146,9 @@
         <div class="chat-messages" id="chat-box">
             {% if chat_history %}
                 {% for msg in chat_history %}
-                    <div class="msg {{ msg.sender }}"><div class="bubble">{{ msg.content | safe }}</div></div>
+                    <div class="msg {{ msg.sender }}">
+                        <div class="bubble raw-content" style="display:none;">{{ msg.content }}</div>
+                    </div>
                 {% endfor %}
             {% else %}
                 <div style="text-align:center; margin-top:50px; color:#a0aec0;"><i class="fas fa-comment-dots" style="font-size:3rem;"></i><p>Sẵn sàng hỗ trợ!</p></div>
@@ -136,52 +157,96 @@
         </div>
 
         <div class="input-wrapper">
-            <div id="img-preview-box">
+            <div id="preview-box">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <small>Ảnh đính kèm:</small> <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="clearImg()"></i>
+                    <small>Đính kèm:</small> <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="clearFile()"></i>
                 </div>
-                <img id="preview-img" src="">
+                <div id="preview-content">
+                    <img id="preview-img" src="">
+                    <i id="preview-icon" class="fas fa-file-alt"></i>
+                    <span id="preview-name"></span>
+                </div>
             </div>
 
             <form id="chat-form" class="input-group">
-                <label for="file-up" style="cursor:pointer; color:#718096; padding:5px;"><i class="fas fa-image" style="font-size:1.3rem;"></i></label>
-                <input type="file" id="file-up" name="file" accept="image/*" style="display:none;">
+                <label for="file-up" class="upload-btn" title="Gửi file/ảnh">
+                    <i class="fas fa-plus"></i>
+                </label>
+                <input type="file" id="file-up" name="file" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt" style="display:none;">
                 
-                <textarea id="msg-input" name="user_input" rows="1" placeholder="Nhập tin nhắn..."></textarea>
-                <button type="submit" style="background:none; border:none; color:#667eea; font-size:1.3rem;"><i class="fas fa-paper-plane"></i></button>
+                <div class="text-box-container">
+                    <textarea id="msg-input" name="user_input" rows="1" placeholder="Nhập tin nhắn..."></textarea>
+                </div>
+                
+                <button type="submit" class="send-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    // 1. MOBILE MENU
-    function toggleMenu() {
-        document.getElementById('sidebar').classList.toggle('open');
-        document.getElementById('overlay').classList.toggle('show');
-    }
+    // 1. CLEAN JSON (Lưới lọc)
+    function cleanJSON(text) { return text ? text.replace(/```json[\s\S]*?```/g, "").trim() : ""; }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const rawMsgs = document.querySelectorAll('.raw-content');
+        rawMsgs.forEach(el => {
+            const cleanContent = cleanJSON(el.innerHTML);
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = cleanContent;
+            el.parentNode.appendChild(bubble);
+            el.remove();
+        });
+        const chatBox = document.getElementById('chat-box');
+        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    });
 
-    // 2. UPLOAD ẢNH (Preview)
+    // 2. FILE HANDLING (ĐA NĂNG)
     const fileUp = document.getElementById('file-up');
-    const previewBox = document.getElementById('img-preview-box');
+    const previewBox = document.getElementById('preview-box');
     const previewImg = document.getElementById('preview-img');
+    const previewIcon = document.getElementById('preview-icon');
+    const previewName = document.getElementById('preview-name');
 
     fileUp.onchange = function() {
         const file = this.files[0];
         if(file) {
-            const reader = new FileReader();
-            reader.onload = e => { previewImg.src = e.target.result; previewBox.style.display = 'block'; }
-            reader.readAsDataURL(file);
+            previewBox.style.display = 'block';
+            previewName.textContent = file.name;
+            
+            // Nếu là ảnh -> Hiện hình
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => { 
+                    previewImg.src = e.target.result; 
+                    previewImg.style.display = 'block';
+                    previewIcon.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                // Nếu là file khác (PDF, Doc...) -> Hiện icon
+                previewImg.style.display = 'none';
+                previewIcon.style.display = 'block';
+                // Đổi icon tùy loại file
+                if(file.name.includes('pdf')) previewIcon.className = 'fas fa-file-pdf';
+                else if(file.name.includes('doc')) previewIcon.className = 'fas fa-file-word';
+                else previewIcon.className = 'fas fa-file-alt';
+            }
         }
     };
-    function clearImg() { fileUp.value=''; previewBox.style.display='none'; }
+    function clearFile() { fileUp.value=''; previewBox.style.display='none'; }
 
-    // 3. SEND MSG
-    const form = document.getElementById('chat-form');
+    // 3. SEND & ENTER
     const input = document.getElementById('msg-input');
-    const chatBox = document.getElementById('chat-box');
+    const sendBtn = document.getElementById('send-btn');
+    const form = document.getElementById('chat-form');
     const typing = document.getElementById('typing');
-    if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    const chatBox = document.getElementById('chat-box');
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+    });
 
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -189,15 +254,19 @@
         const file = fileUp.files[0];
         if(!text && !file) return;
 
-        // Hiện tin nhắn user
-        let content = text;
-        if(file) content += `<br><img src="${previewImg.src}" style="max-height:100px; border-radius:5px; margin-top:5px;">`;
-        
-        appendMsg('user', content);
-        
-        // Reset form
-        input.value=''; clearImg(); 
-        typing.style.display='flex'; chatBox.scrollTop = chatBox.scrollHeight;
+        // Render tin nhắn user
+        let userContent = text;
+        if(file) {
+            if(file.type.startsWith('image/')) {
+                userContent += `<br><img src="${previewImg.src}" style="max-height:150px; border-radius:8px; margin-top:5px;">`;
+            } else {
+                userContent += `<div class="file-attachment"><i class="${previewIcon.className}"></i> ${file.name}</div>`;
+            }
+        }
+        appendMsg('user', userContent);
+
+        input.value = ''; clearFile(); 
+        typing.style.display = 'flex'; chatBox.scrollTop = chatBox.scrollHeight;
 
         const fd = new FormData();
         fd.append('user_input', text);
@@ -206,11 +275,9 @@
         try {
             const res = await fetch('{{ endpoint }}', { method:'POST', body:fd });
             const data = await res.json();
-            typing.style.display='none';
-            appendMsg('assistant', data.response);
-        } catch {
-            typing.style.display='none'; appendMsg('assistant', 'Lỗi kết nối.');
-        }
+            typing.style.display = 'none';
+            appendMsg('assistant', cleanJSON(data.response));
+        } catch { typing.style.display = 'none'; appendMsg('assistant', 'Lỗi kết nối.'); }
     };
 
     function appendMsg(role, html) {
@@ -220,8 +287,10 @@
         chatBox.insertBefore(div, typing);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
+    input.oninput = function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; };
 
-    // 4. TIMER & SURVEY
+    // 4. CÁC FUNCTION KHÁC (GIỮ NGUYÊN)
+    function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
     const timerDisplay = document.getElementById('timer');
     const surveyBox = document.getElementById('survey-box');
     const surveyLink = document.getElementById('survey-link');
@@ -239,13 +308,9 @@
             if(elapsed>=REQ_SEC && surveyBox) surveyBox.classList.add('active');
         }, 1000);
     }
-    if(surveyLink) surveyLink.onclick = e => { 
-        if(!surveyBox.classList.contains('active')) { e.preventDefault(); alert('Chưa đủ giờ học!'); return; }
-        if(!confirm('Đã học xong chưa?')) e.preventDefault();
-    };
+    if(surveyLink) surveyLink.onclick = e => { if(!surveyBox.classList.contains('active')) { e.preventDefault(); alert('Chưa đủ giờ học!'); return; } if(!confirm('Đã học xong chưa?')) e.preventDefault(); };
     startTimer();
 
-    // 5. DARK MODE
     const themeBtn = document.getElementById('theme-btn');
     if(themeBtn) {
         if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark-mode');
