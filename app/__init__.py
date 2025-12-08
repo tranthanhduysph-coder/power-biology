@@ -15,15 +15,12 @@ login = LoginManager()
 login.login_view = 'main.login'
 login.login_message = 'Vui lòng đăng nhập.'
 
-# Cấu hình trực tiếp (Đơn giản, tránh lỗi import)
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-123456'
-    
-    # Fix lỗi database URL của Render (postgres -> postgresql)
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-123'
+    # Fix lỗi database URL trên Render
     uri = os.environ.get('DATABASE_URL') or 'sqlite:///site.db'
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
-    
     SQLALCHEMY_DATABASE_URI = uri
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads')
@@ -39,6 +36,15 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
+
+    # --- PHẦN QUAN TRỌNG MỚI THÊM: USER LOADER ---
+    # Phải import User model ở đây để tránh vòng lặp import
+    from app.models import User
+
+    @login.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+    # ---------------------------------------------
 
     from app.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
