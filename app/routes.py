@@ -8,7 +8,6 @@ from .models import User, Message, VariableLog
 from .forms import LoginForm, UserForm, UploadCSVForm, ChangePasswordForm, ResetPasswordForm
 import openai, csv, io, uuid, time, json, os, traceback
 
-# --- 1. KHỞI TẠO BLUEPRINT ---
 main = Blueprint('main', __name__)
 
 # --- 2. CÁC HÀM HỖ TRỢ ---
@@ -27,18 +26,13 @@ def admin_required(f):
 def get_assistant_response(user_message, bot_type):
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
-        # --- LOGIC QUYẾT ĐỊNH DÙNG CON BOT NÀO ---
-        if bot_type == 'ai':
-            assistant_id = os.environ.get('CHATBOT_AI_ID') # Con Bot Thông Minh
-        else:
-            assistant_id = os.environ.get('CHATBOT_GOFAI_ID') # Con Bot Cơ Bản
+        assistant_id = os.environ.get('CHATBOT_AI_ID') if bot_type == 'ai' else os.environ.get('CHATBOT_GOFAI_ID')
         
-        if not api_key or not assistant_id: return "Lỗi cấu hình: Chưa có API Key hoặc Assistant ID."
+        if not api_key or not assistant_id: return "Lỗi cấu hình OpenAI API."
         
         openai.api_key = api_key
         client = openai
         
-        # Tạo hoặc lấy Thread
         thread_id = current_user.current_thread_id
         if not thread_id:
             thread = client.beta.threads.create()
@@ -46,11 +40,9 @@ def get_assistant_response(user_message, bot_type):
             current_user.current_thread_id = thread_id
             db.session.commit()
         
-        # Gửi tin nhắn
         client.beta.threads.messages.create(thread_id=thread_id, role="user", content=user_message)
         run = client.beta.threads.runs.create(thread_id=thread_id, assistant_id=assistant_id)
         
-        # Chờ phản hồi
         while run.status in ['queued', 'in_progress']:
             time.sleep(0.5)
             run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
@@ -64,9 +56,8 @@ def get_assistant_response(user_message, bot_type):
         return "Hệ thống đang bận."
 
 def handle_chat_logic(bot_type_check):
-    # Bảo vệ: Nếu user là 'gofai' mà cố vào trang 'ai' thì chặn ngay
     if not current_user.is_admin and current_user.bot_type != bot_type_check:
-        return jsonify({'response': "Bạn không có quyền truy cập Bot này."}), 403
+        return jsonify({'response': "Lỗi quyền truy cập."}), 403
 
     user_text = request.form.get('user_input', '').strip()
     file = request.files.get('file')
@@ -80,7 +71,6 @@ def handle_chat_logic(bot_type_check):
     file_html = ""
     file_msg = ""
 
-    # Xử lý File Upload
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
@@ -94,32 +84,38 @@ def handle_chat_logic(bot_type_check):
 
     if not user_text and not file: return jsonify({'response': ""}), 400
 
-    # Lưu User Msg
     user_msg = Message(sender='user', content=user_text + file_html, author=current_user, session_id=sess_id)
     db.session.add(user_msg)
 
-    # Gọi AI (Truyền đúng bot_type để lấy đúng não)
+    # Gọi AI
     full_resp = get_assistant_response(user_text + file_msg, bot_type_check)
 
-    # Tách JSON Log điểm số
-    ui_text = full_resp
+    # --- LOGIC TÁCH JSON (QUAN TRỌNG) ---
+    ui_text = full_resp # Mặc định là toàn bộ nếu không tìm thấy JSON
     try:
         if "```json" in full_resp:
             parts = full_resp.split("```json")
-            ui_text = parts[0].strip()
-            json_str = parts[1].split("```")[0].replace("LOG_DATA =", "").strip()
+            ui_text = parts[0].strip() # Chỉ lấy phần lời thoại
+            
+            # Phần sau là JSON, cần xử lý để lưu DB
+            json_part = parts[1].split("```")[0]
+            # Xóa sạch các ký tự thừa như "LOG_DATA =" nếu có
+            json_str = json_part.replace("LOG_DATA =", "").strip()
+            
             if json_str:
                 data = json.loads(json_str)
                 for k, v in data.items():
                     db.session.add(VariableLog(user_id=current_user.id, session_id=sess_id, variable_name=str(k), variable_value=str(v)))
     except Exception as e:
         print(f"Log Error: {e}")
+        # Nếu lỗi tách JSON, ui_text vẫn giữ nguyên để hiển thị tin nhắn (dù có thể còn dính code)
 
-    # Lưu Bot Msg
+    # Lưu vào DB: Lưu bản gốc (full_resp) để Admin có thể xem lại log sau này
     bot_msg = Message(sender='assistant', content=full_resp, author=current_user, session_id=sess_id)
     db.session.add(bot_msg)
     db.session.commit()
 
+    # Trả về cho User: CHỈ TRẢ VỀ BẢN SẠCH (ui_text)
     return jsonify({'response': ui_text})
 
 # --- 3. CÁC ROUTE CƠ BẢN ---
@@ -152,7 +148,6 @@ def logout():
 @login_required
 def chatbot_redirect():
     if current_user.is_admin: return redirect(url_for('main.admin_dashboard'))
-    # ĐIỀU HƯỚNG QUAN TRỌNG: Dựa vào bot_type trong DB để chuyển trang
     return redirect(url_for(f'main.chatbot_{current_user.bot_type}'))
 
 def get_user_sessions():
@@ -161,7 +156,6 @@ def get_user_sessions():
     ).filter_by(user_id=current_user.id).group_by(Message.session_id).order_by(desc('last_active')).all()
 
 def render_chat_page(bot_type, bot_name):
-    # Bảo vệ 2 lớp: Chặn nếu user cố tình gõ URL sai
     if not current_user.is_admin and current_user.bot_type != bot_type:
         return redirect(url_for('main.chatbot_redirect'))
     
@@ -185,7 +179,7 @@ def render_chat_page(bot_type, bot_name):
 
 @main.route('/chatbot/ai', methods=['GET', 'POST'])
 @login_required
-def chatbot_ai(): return render_chat_page('ai', "AI Coach (POWER)")
+def chatbot_ai(): return render_chat_page('ai', "AI Coach")
 
 @main.route('/chatbot/gofai', methods=['GET', 'POST'])
 @login_required
@@ -195,7 +189,6 @@ def chatbot_gofai(): return render_chat_page('gofai', "Basic Bot")
 @login_required
 def new_chat():
     current_user.current_session_id = str(uuid.uuid4())
-    # Reset thread để AI quên ngữ cảnh cũ
     try: openai.api_key = os.environ.get('OPENAI_API_KEY'); current_user.current_thread_id = openai.beta.threads.create().id
     except: pass
     db.session.commit()
@@ -226,7 +219,7 @@ def delete_session(session_id):
 @main.route('/disclaimer')
 def disclaimer(): return render_template('disclaimer.html')
 
-# --- 4. ADMIN DASHBOARD & CSV (LOGIC MAPPING & XÓA CHỌN) ---
+# --- 4. ADMIN DASHBOARD & CSV ---
 
 @main.route('/admin', methods=['GET'])
 @login_required
@@ -265,13 +258,11 @@ def batch_create_users():
         try:
             file = form.csv_file.data
             file.seek(0)
-            
-            # 1. Đọc file bất tử (RAM Read)
             file_content = file.read().decode("utf-8-sig", errors='ignore')
             
             stream = io.StringIO(file_content)
             csv_reader = csv.reader(stream)
-            try: next(csv_reader, None) # Bỏ header
+            try: next(csv_reader, None)
             except: pass
 
             count = 0
@@ -283,17 +274,15 @@ def batch_create_users():
                 
                 r_pass = row[1].strip() if len(row) > 1 and row[1].strip() else "123456"
                 
-                # --- 2. LOGIC MAPPING (FIXED) ---
-                raw_type = row[2].strip().lower() # Chuyển về chữ thường
+                # --- LOGIC MAPPING (FIXED) ---
+                raw_type = row[2].strip().lower() 
                 
-                # Ưu tiên check GOFAI trước
                 if 'gofai' in raw_type or 'basic' in raw_type:
                     r_type = 'gofai'
-                # Sau đó check AI
                 elif 'ai' in raw_type or 'coach' in raw_type:
                     r_type = 'ai'
                 else:
-                    r_type = 'gofai' # Mặc định nếu viết sai
+                    r_type = 'gofai' 
 
                 if not User.query.filter_by(username=r_user).first():
                     new_user = User(username=r_user, bot_type=r_type)
@@ -313,12 +302,11 @@ def batch_create_users():
         
     return redirect(url_for('main.admin_dashboard'))
 
-# --- XÓA CÁC USER ĐÃ CHỌN (TÍNH NĂNG MỚI) ---
 @main.route('/admin/delete_selected', methods=['POST'])
 @login_required
 @admin_required
 def delete_selected_users():
-    user_ids = request.form.getlist('user_ids') # Nhận list ID từ checkbox
+    user_ids = request.form.getlist('user_ids')
     
     if not user_ids:
         flash('Chưa chọn học sinh nào!', 'warning')
@@ -328,7 +316,6 @@ def delete_selected_users():
         deleted_count = 0
         for uid in user_ids:
             u = User.query.get(int(uid))
-            # Không cho xóa Admin
             if u and not u.is_admin: 
                 Message.query.filter_by(user_id=u.id).delete()
                 VariableLog.query.filter_by(user_id=u.id).delete()
