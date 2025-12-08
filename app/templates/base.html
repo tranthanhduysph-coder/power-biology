@@ -69,7 +69,7 @@
                 {% else %}
                     <a href="{{ url_for('main.new_chat') }}">Chat Mới</a>
                 {% endif %}
-                <a href="{{ url_for('main.logout') }}" class="logout-btn" onclick="localStorage.removeItem('sessionStart');">Thoát</a>
+                <a href="{{ url_for('main.logout') }}" class="logout-btn" onclick="localStorage.removeItem('ss_start');">Thoát</a>
             {% endif %}
         </div>
     </nav>
