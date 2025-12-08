@@ -1,47 +1,45 @@
-import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from dotenv import load_dotenv
+import os
 
-# Load biến môi trường
+# Tải biến môi trường
 load_dotenv()
 
-# --- CẤU HÌNH TRỰC TIẾP ---
-class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'ban-khong-bao-gio-doan-duoc-dau'
-    # Fix lỗi Database URL trên Render (postgres:// -> postgresql://)
-    uri = os.environ.get('DATABASE_URL') or 'sqlite:///site.db'
-    if uri.startswith("postgres://"):
-        uri = uri.replace("postgres://", "postgresql://", 1)
-    SQLALCHEMY_DATABASE_URI = uri
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads')
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER)
-
-# Khởi tạo Extension
+# Khởi tạo các extension
 db = SQLAlchemy()
 migrate = Migrate()
 login = LoginManager()
 login.login_view = 'main.login'
 login.login_message = 'Vui lòng đăng nhập.'
 
+# Cấu hình trực tiếp (Tránh lỗi thiếu file config.py)
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-123'
+    # Fix lỗi database URL của Render
+    uri = os.environ.get('DATABASE_URL') or 'sqlite:///site.db'
+    if uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+    SQLALCHEMY_DATABASE_URI = uri
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Thư mục upload
+    UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads')
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Tạo thư mục upload nếu chưa có
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
 
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
 
-    # Headers bảo mật
-    @app.after_request
-    def add_headers(response):
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        return response
-
+    # Đăng ký routes
     from app.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
