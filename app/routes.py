@@ -338,6 +338,33 @@ def export_chat_history():
         t = m.timestamp.strftime('%Y-%m-%d %H:%M:%S') if m.timestamp else ""
         cw.writerow([t, m.session_id, u.username, m.sender, m.content])
     return Response(si.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=data.csv"})
+# --- ROUTE MỚI: XUẤT FILE LOG (ĐIỂM SỐ/BIẾN) ---
+@main.route('/admin/export_logs')
+@login_required
+@admin_required
+def export_variable_logs():
+    # Tạo CSV trong bộ nhớ
+    si = io.StringIO()
+    cw = csv.writer(si)
+    
+    # Header CSV: Thời gian, Session, Username, Tên Biến, Giá trị (Điểm)
+    cw.writerow(['Time (GMT+7)', 'Session', 'Username', 'Variable Name', 'Value'])
+    
+    # Lấy dữ liệu từ bảng VariableLog kết hợp với User
+    logs = db.session.query(VariableLog, User).join(User).order_by(VariableLog.timestamp.desc()).all()
+    
+    for l, u in logs:
+        # Format thời gian
+        t_str = l.timestamp.strftime('%Y-%m-%d %H:%M:%S') if l.timestamp else ""
+        # Ghi dòng: Thời gian, ID Session, Tên User, Tên Biến, Giá trị
+        cw.writerow([t_str, l.session_id, u.username, l.variable_name, l.variable_value])
+        
+    # Trả về file CSV
+    return Response(
+        si.getvalue(), 
+        mimetype="text/csv", 
+        headers={"Content-Disposition": "attachment;filename=logs_export.csv"}
+    )
 
 @main.route('/change_password', methods=['GET', 'POST'])
 @login_required
