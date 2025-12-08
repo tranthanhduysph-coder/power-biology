@@ -265,8 +265,8 @@ def batch_create_users():
                 if not r_user: continue
                 if not r_pass: r_pass = "123456"
                 
-                if 'ai' in r_type or 'coach' in r_type: bot = 'ai'
-                elif 'gofai' in r_type or 'basic' in r_type: bot = 'gofai'
+                if 'gofai' in r_type or 'basic' in r_type: bot = 'gofai'
+                elif 'ai' in r_type or 'coach' in r_type: bot = 'ai'
                 else: bot = 'gofai'
 
                 if not User.query.filter_by(username=r_user).first():
