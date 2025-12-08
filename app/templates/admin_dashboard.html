@@ -4,7 +4,6 @@
 
 {% block content %}
 <style>
-    /* CSS Giữ nguyên bản đẹp */
     .scroll-y { overflow-y: auto; height: 100%; background: #f0f2f5; }
     .admin-container { max-width: 1400px; margin: 0 auto; padding: 20px; padding-bottom: 120px; }
     .panel { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 25px; margin-bottom: 25px; border: 1px solid #d1d5db; }
@@ -30,24 +29,18 @@
     .action-group { display: flex; gap: 8px; align-items: center; }
     .mini-form { display: flex; gap: 5px; align-items: center; background: #f3f4f6; padding: 4px 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
     .mini-input { width: 90px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; }
-    
-    /* Style cho checkbox */
     input[type="checkbox"].bulk-check { width: 18px; height: 18px; cursor: pointer; }
-
     @media (max-width: 768px) { .admin-container { padding: 10px; } .panel { padding: 15px; } .form-row { flex-direction: column; align-items: stretch; } .btn { justify-content: center; width: 100%; margin-bottom: 5px; } }
 </style>
 
 <div class="admin-container">
-    
     <div class="panel">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
             <div>
                 <h1 style="margin:0; color:#111827; font-size:1.8rem;"><i class="fas fa-shield-alt"></i> ADMIN DASHBOARD</h1>
                 <p style="margin:5px 0 0; color:#6b7280;">Xin chào: <b>{{ current_user.username }}</b></p>
             </div>
-            <a href="{{ url_for('main.export_chat_history') }}" class="btn btn-green">
-                <i class="fas fa-file-csv"></i> Xuất Dữ liệu Chat
-            </a>
+            <a href="{{ url_for('main.export_chat_history') }}" class="btn btn-green"><i class="fas fa-file-csv"></i> Xuất Dữ liệu</a>
         </div>
     </div>
 
@@ -56,15 +49,11 @@
         
         <div style="background: #eff6ff; padding: 20px; border-radius: 8px; border: 1px dashed #3b82f6; margin-bottom: 30px;">
             <h4 style="margin-top:0; color:#1e40af; margin-bottom:10px;">Cách 1: Upload danh sách (Excel/CSV)</h4>
-            <p style="font-size:0.9rem; margin-bottom:15px; color:#4b5563;">File cần có 3 cột: <code>username</code>, <code>password</code>, <code>bot_type</code></p>
-            
             <form method="POST" action="{{ url_for('main.batch_create_users') }}" enctype="multipart/form-data" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
                 {{ upload_form.csrf_token(id="csrf_token_upload") }}
-                <label for="file_upload_input" style="font-weight: 600; color: #374151; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                    <i class="fas fa-folder-open"></i> Chọn file CSV:
-                </label>
+                <label for="file_upload_input" style="font-weight: 600; color: #374151; cursor: pointer;">Chọn file CSV:</label>
                 {{ upload_form.csv_file(class="form-control", style="max-width:350px;", id="file_upload_input") }}
-                <button type="submit" class="btn btn-blue" id="btn_submit_upload">TẠO USER HÀNG LOẠT</button>
+                <button type="submit" class="btn btn-blue">TẠO USER HÀNG LOẠT</button>
             </form>
         </div>
 
@@ -73,26 +62,24 @@
             <form method="POST" action="{{ url_for('main.create_single_user') }}">
                 {{ user_form.csrf_token(id="csrf_token_create") }}
                 <div class="form-row">
-                    <div class="form-group"><label>Tên đăng nhập</label>{{ user_form.username(class="form-control", placeholder="Ví dụ: HS01", id="input_new_user") }}</div>
-                    <div class="form-group"><label>Mật khẩu</label>{{ user_form.password(class="form-control", value="123456", id="input_new_pass") }}</div>
-                    <div class="form-group"><label>Loại Bot</label>{{ user_form.bot_type(class="form-control", id="input_bot_type") }}</div>
-                    <div class="form-group" style="flex:0 0 auto; padding-bottom:12px;">{{ user_form.is_admin(id="check_is_admin") }} <label for="check_is_admin" style="display:inline; cursor:pointer;">Admin?</label></div>
-                    <div class="form-group" style="flex:0 0 auto;"><button type="submit" class="btn btn-blue" id="btn_submit_create">Tạo tài khoản</button></div>
+                    <div class="form-group"><label>Username</label>{{ user_form.username(class="form-control", placeholder="HS01") }}</div>
+                    <div class="form-group"><label>Password</label>{{ user_form.password(class="form-control", value="123456") }}</div>
+                    <div class="form-group"><label>Loại Bot</label>{{ user_form.bot_type(class="form-control") }}</div>
+                    <div class="form-group" style="flex:0 0 auto; padding-bottom:12px;">{{ user_form.is_admin(id="chk_admin") }} <label for="chk_admin" style="display:inline; cursor:pointer;">Admin?</label></div>
+                    <div class="form-group" style="flex:0 0 auto;"><button type="submit" class="btn btn-blue">Tạo</button></div>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="panel">
-        
-        <form id="bulk_delete_form" action="{{ url_for('main.delete_selected_users') }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa các tài khoản đã chọn không?');"></form>
+        <form id="bulk_delete_form" action="{{ url_for('main.delete_selected_users') }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa các tài khoản đã chọn?');"></form>
 
         <div class="panel-header">
             <span><i class="fas fa-users"></i> Danh Sách Học Sinh ({{ users|length }})</span>
-            
             {% if users|length > 0 %}
             <button type="submit" form="bulk_delete_form" class="btn btn-red" style="padding: 8px 12px; font-size: 0.9rem;">
-                <i class="fas fa-trash-alt"></i> XÓA MỤC ĐÃ CHỌN
+                <i class="fas fa-trash-check"></i> XÓA MỤC ĐÃ CHỌN
             </button>
             {% endif %}
         </div>
@@ -101,42 +88,28 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 40px; text-align: center;">
-                            <input type="checkbox" id="select_all" class="bulk-check" onclick="toggleAll(this)">
-                        </th>
-                        <th style="width: 50px;">#</th>
-                        <th>Tên Đăng Nhập</th>
-                        <th>Loại Bot</th>
-                        <th>Trạng Thái</th>
-                        <th style="width: 480px;">Chức Năng</th>
+                        <th style="width: 40px; text-align: center;"><input type="checkbox" id="select_all" class="bulk-check" onclick="toggleAll(this)"></th>
+                        <th style="width: 50px;">#</th><th>Tên Đăng Nhập</th><th>Loại Bot</th><th>Trạng Thái</th><th style="width: 480px;">Chức Năng</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in users %}
                     <tr>
-                        <td style="text-align: center;">
-                            <input type="checkbox" name="user_ids" value="{{ user.id }}" form="bulk_delete_form" class="bulk-check user-check">
-                        </td>
+                        <td style="text-align: center;"><input type="checkbox" name="user_ids" value="{{ user.id }}" form="bulk_delete_form" class="bulk-check user-check"></td>
                         <td>{{ loop.index }}</td>
                         <td><b>{{ user.username }}</b></td>
-                        <td>
-                            {% if user.bot_type == 'ai' %}
-                                <span style="background:#dbeafe; color:#1e40af; padding:4px 10px; border-radius:15px; font-weight:bold; font-size:0.8rem;">AI Coach</span>
-                            {% else %}
-                                <span style="background:#fef3c7; color:#92400e; padding:4px 10px; border-radius:15px; font-weight:bold; font-size:0.8rem;">Basic Bot</span>
-                            {% endif %}
-                        </td>
+                        <td><span style="background:{{ '#dbeafe' if user.bot_type=='ai' else '#fef3c7' }}; color:{{ '#1e40af' if user.bot_type=='ai' else '#92400e' }}; padding:4px 10px; border-radius:15px; font-weight:bold; font-size:0.8rem;">{{ 'AI Coach' if user.bot_type=='ai' else 'Basic Bot' }}</span></td>
                         <td>{% if user.current_session_id %}<span style="color:#059669; font-weight:600;">Đã học</span>{% else %}<span style="color:#9ca3af;">Chưa vào</span>{% endif %}</td>
                         <td>
                             <div class="action-group">
-                                <a href="{{ url_for('main.view_chat_history', user_id=user.id) }}" class="btn btn-sm btn-purple" title="Xem chat"><i class="fas fa-comments"></i> Chat</a>
-                                <a href="{{ url_for('main.view_variable_logs', user_id=user.id) }}" class="btn btn-sm btn-orange" title="Logs"><i class="fas fa-clipboard-list"></i> Logs</a>
+                                <a href="{{ url_for('main.view_chat_history', user_id=user.id) }}" class="btn btn-sm btn-purple"><i class="fas fa-comments"></i></a>
+                                <a href="{{ url_for('main.view_variable_logs', user_id=user.id) }}" class="btn btn-sm btn-orange"><i class="fas fa-clipboard-list"></i></a>
                                 <form action="{{ url_for('main.reset_student_password', user_id=user.id) }}" method="POST" class="mini-form">
-                                    {{ reset_form.csrf_token(id="csrf_reset_" ~ user.id) }}
-                                    {{ reset_form.new_password(class="mini-input", placeholder="Pass mới", id="new_pass_" ~ user.id) }}
-                                    <button type="submit" class="btn-icon" title="Lưu"><i class="fas fa-save"></i></button>
+                                    {{ reset_form.csrf_token(id="csrf_" ~ user.id) }}
+                                    {{ reset_form.new_password(class="mini-input", placeholder="Pass mới") }}
+                                    <button type="submit" class="btn-icon"><i class="fas fa-save"></i></button>
                                 </form>
-                                <a href="{{ url_for('main.delete_user', user_id=user.id) }}" class="btn btn-sm btn-red" onclick="return confirm('Xóa user này?');" title="Xóa"><i class="fas fa-trash-alt"></i></a>
+                                <a href="{{ url_for('main.delete_user', user_id=user.id) }}" class="btn btn-sm btn-red" onclick="return confirm('Xóa?');"><i class="fas fa-trash-alt"></i></a>
                             </div>
                         </td>
                     </tr>
@@ -150,12 +123,9 @@
 </div>
 
 <script>
-    // Script chọn tất cả
     function toggleAll(source) {
         checkboxes = document.querySelectorAll('.user-check');
-        for(var i=0, n=checkboxes.length;i<n;i++) {
-            checkboxes[i].checked = source.checked;
-        }
+        for(var i=0; i<checkboxes.length; i++) checkboxes[i].checked = source.checked;
     }
 </script>
 {% endblock %}
