@@ -40,7 +40,15 @@
                 <h1 style="margin:0; color:#111827; font-size:1.8rem;"><i class="fas fa-shield-alt"></i> ADMIN DASHBOARD</h1>
                 <p style="margin:5px 0 0; color:#6b7280;">Xin chào: <b>{{ current_user.username }}</b></p>
             </div>
-            <a href="{{ url_for('main.export_chat_history') }}" class="btn btn-green"><i class="fas fa-file-csv"></i> Xuất Dữ liệu</a>
+            <div style="display:flex; gap:10px;">
+    <a href="{{ url_for('main.export_chat_history') }}" class="btn btn-green">
+        <i class="fas fa-comments"></i> Xuất Chat
+    </a>
+    
+    <a href="{{ url_for('main.export_variable_logs') }}" class="btn btn-orange">
+        <i class="fas fa-clipboard-list"></i> Xuất Logs (Điểm)
+    </a>
+</div>
         </div>
     </div>
 
