@@ -60,7 +60,7 @@ def get_assistant_response(user_message, bot_type):
         print(f"AI Error: {e}")
         return "Hệ thống bận."
 
-# --- XỬ LÝ CHAT (LOGIC QUAN TRỌNG) ---
+# --- XỬ LÝ CHAT ---
 def handle_chat_logic(bot_type_check):
     if not current_user.is_admin and current_user.bot_type != bot_type_check:
         return jsonify({'response': "Sai loại bot."}), 403
@@ -88,31 +88,26 @@ def handle_chat_logic(bot_type_check):
 
     if not user_text and not file: return jsonify({'response': ""}), 400
 
-    # 1. Lưu tin nhắn User (Giờ VN)
     user_msg = Message(sender='user', content=user_text + file_html, author=current_user, session_id=sess_id, timestamp=get_vietnam_time())
     db.session.add(user_msg)
 
-    # 2. Gọi AI lấy phản hồi gốc
     full_resp = get_assistant_response(user_text + file_msg, bot_type_check)
 
-    # 3. Tách JSON ra khỏi phản hồi
-    ui_text = full_resp # Mặc định là toàn bộ
+    # Tách JSON để sạch màn hình
+    ui_text = full_resp 
     try:
         if "```json" in full_resp:
             parts = full_resp.split("```json")
-            ui_text = parts[0].strip() # ĐÂY LÀ PHẦN SẠCH ĐỂ HIỂN THỊ
+            ui_text = parts[0].strip()
             
-            # Xử lý phần JSON để lưu log vào bảng VariableLog
             json_str = parts[1].split("```")[0].replace("LOG_DATA =", "").strip()
             if json_str:
                 data = json.loads(json_str)
                 for k, v in data.items():
                     db.session.add(VariableLog(user_id=current_user.id, session_id=sess_id, variable_name=str(k), variable_value=str(v), timestamp=get_vietnam_time()))
-    except:
-        pass 
+    except: pass
 
-    # 4. CHỈ LƯU PHẦN TEXT SẠCH VÀO DATABASE (ui_text)
-    # Đây là bước quyết định để Admin Log không thấy JSON và F5 không bị lỗi hiển thị
+    # CHỈ LƯU TEXT SẠCH VÀO DB
     bot_msg = Message(sender='assistant', content=ui_text, author=current_user, session_id=sess_id, timestamp=get_vietnam_time())
     db.session.add(bot_msg)
     db.session.commit()
@@ -156,11 +151,15 @@ def render_chat_page(bot_type, bot_name):
     if not sess_id: sess_id = str(uuid.uuid4()); current_user.current_session_id = sess_id; db.session.commit()
     
     hist = Message.query.filter_by(user_id=current_user.id, session_id=sess_id).order_by(Message.timestamp.asc()).all()
-    # Lấy danh sách session
     sessions = db.session.query(Message.session_id, func.max(Message.timestamp)).filter_by(user_id=current_user.id).group_by(Message.session_id).order_by(desc(func.max(Message.timestamp))).all()
     session_list = [{'id': s[0], 'name': s[1].strftime('%d/%m %H:%M'), 'active': s[0]==sess_id} for s in sessions]
 
-    return render_template('chatbot_layout.html', chat_history=hist, bot_name=bot_name, endpoint=f"/chatbot/{bot_type}", session_list=session_list)
+    # QUAN TRỌNG: Phải truyền 'endpoint' để Javascript biết đường gửi tin nhắn
+    return render_template('chatbot_layout.html', 
+                           chat_history=hist, 
+                           bot_name=bot_name, 
+                           endpoint=f"/chatbot/{bot_type}", 
+                           session_list=session_list)
 
 @main.route('/chatbot/ai', methods=['GET', 'POST'])
 @login_required
@@ -196,7 +195,7 @@ def delete_session(session_id):
 @main.route('/disclaimer')
 def disclaimer(): return render_template('disclaimer.html')
 
-# --- ADMIN DASHBOARD ---
+# --- ADMIN ROUTES ---
 @main.route('/admin', methods=['GET'])
 @login_required
 @admin_required
@@ -207,7 +206,6 @@ def admin_dashboard():
     users = User.query.filter_by(is_admin=False).all()
     return render_template('admin_dashboard.html', users=users, user_form=user_form, upload_form=upload_form, reset_form=reset_form)
 
-# --- ADMIN: TẠO 1 USER ---
 @main.route('/admin/create_user', methods=['POST'])
 @login_required
 @admin_required
@@ -220,10 +218,8 @@ def create_single_user():
             db.session.add(u); db.session.commit()
             flash('Thêm thành công!', 'success')
         else: flash('User đã tồn tại.', 'danger')
-    else: flash('Dữ liệu lỗi.', 'warning')
     return redirect(url_for('main.admin_dashboard'))
 
-# --- ADMIN: UPLOAD CSV (FIX CỨNG 500) ---
 @main.route('/admin/upload_csv', methods=['POST'])
 @login_required
 @admin_required
@@ -233,34 +229,30 @@ def batch_create_users():
         try:
             file = form.csv_file.data
             file.seek(0)
-            file_content = file.read() # Đọc toàn bộ vào RAM
-            
-            # Thử decode
+            file_content = file.read()
             text_content = None
             for enc in ['utf-8-sig', 'utf-8', 'cp1252', 'latin-1']:
                 try: text_content = file_content.decode(enc); break
                 except: continue
             
-            if not text_content: raise ValueError("Lỗi bảng mã file.")
-
+            if not text_content: raise ValueError("Lỗi file.")
+            
             stream = io.StringIO(text_content)
-            # Tự động phát hiện dấu phân cách
             delimiter = ';' if ';' in text_content.splitlines()[0] else ','
             csv_reader = csv.reader(stream, delimiter=delimiter)
-            
-            try: next(csv_reader, None) # Bỏ header
+            try: next(csv_reader, None)
             except: pass
 
             count = 0
             for row in csv_reader:
                 if not row or len(row) < 3: continue
                 
-                # --- LOGIC THÔNG MINH: NHẬN DIỆN 3 CỘT HAY 5 CỘT ---
-                if len(row) >= 5: # File kiểu NguyenVanCu (Name, Class, User, Pass, Type)
+                # Logic thông minh 3 cột / 5 cột
+                if len(row) >= 5: # File NguyenVanCu
                     r_user = row[2].strip()
                     r_pass = row[3].strip()
                     raw_type = row[4].strip().lower()
-                else: # File kiểu mẫu (User, Pass, Type)
+                else: # File chuẩn
                     r_user = row[0].strip()
                     r_pass = row[1].strip()
                     raw_type = row[2].strip().lower()
@@ -268,7 +260,6 @@ def batch_create_users():
                 if not r_user: continue
                 if not r_pass: r_pass = "123456"
 
-                # Mapping bot
                 if 'ai' in raw_type or 'coach' in raw_type: r_type = 'ai'
                 elif 'gofai' in raw_type or 'basic' in raw_type: r_type = 'gofai'
                 else: r_type = 'gofai'
@@ -280,40 +271,30 @@ def batch_create_users():
                     count += 1
             
             db.session.commit()
-            flash(f'Đã thêm {count} học sinh.', 'success')
+            flash(f'Thêm {count} user.', 'success')
         except Exception as e:
             db.session.rollback()
-            print(f"CSV ERROR: {e}")
-            flash(f'Lỗi xử lý file: {str(e)}', 'danger')
-            
+            flash(f'Lỗi CSV: {str(e)}', 'danger')
     return redirect(url_for('main.admin_dashboard'))
 
-# --- ADMIN: XÓA ĐÃ CHỌN ---
 @main.route('/admin/delete_selected', methods=['POST'])
 @login_required
 @admin_required
 def delete_selected_users():
     ids = request.form.getlist('user_ids')
-    if not ids:
-        flash('Chưa chọn user.', 'warning')
-        return redirect(url_for('main.admin_dashboard'))
+    if not ids: return redirect(url_for('main.admin_dashboard'))
     try:
-        c = 0
         for uid in ids:
             u = User.query.get(int(uid))
             if u and not u.is_admin:
                 Message.query.filter_by(user_id=u.id).delete()
                 VariableLog.query.filter_by(user_id=u.id).delete()
                 db.session.delete(u)
-                c += 1
         db.session.commit()
-        flash(f'Đã xóa {c} user.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Lỗi xóa: {str(e)}', 'danger')
+        flash('Đã xóa.', 'success')
+    except: db.session.rollback()
     return redirect(url_for('main.admin_dashboard'))
 
-# --- CÁC ROUTE KHÁC ---
 @main.route('/admin/delete/<int:user_id>')
 @login_required
 @admin_required
@@ -351,11 +332,9 @@ def view_variable_logs(user_id):
 @admin_required
 def export_chat_history():
     si = io.StringIO(); cw = csv.writer(si)
-    cw.writerow(['Time (GMT+7)','Session','User','Type','Content'])
+    cw.writerow(['Time','Session','User','Type','Content'])
     msgs = db.session.query(Message, User).join(User).order_by(Message.timestamp.desc()).all()
-    for m, u in msgs:
-        t = m.timestamp.strftime('%Y-%m-%d %H:%M:%S') if m.timestamp else ""
-        cw.writerow([t, m.session_id, u.username, m.sender, m.content])
+    for m, u in msgs: cw.writerow([m.timestamp, m.session_id, u.username, m.sender, m.content])
     return Response(si.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=data.csv"})
 
 @main.route('/change_password', methods=['GET', 'POST'])
@@ -363,6 +342,6 @@ def export_chat_history():
 def change_password():
     form = ChangePasswordForm()
     if form.validate_on_submit():
-        if current_user.check_password(form.current_password.data): current_user.set_password(form.new_password.data); db.session.commit(); flash('Đổi pass thành công', 'success'); return redirect(url_for('main.chatbot_redirect'))
-        flash('Sai mật khẩu cũ', 'danger')
+        if current_user.check_password(form.current_password.data): current_user.set_password(form.new_password.data); db.session.commit(); return redirect(url_for('main.chatbot_redirect'))
+        flash('Sai mật khẩu', 'danger')
     return render_template('change_password.html', form=form)
