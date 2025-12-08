@@ -2,12 +2,14 @@
 {% block content %}
 <div style="padding:20px; max-width:800px; margin:0 auto;">
     <h2>Lịch sử chat: {{ student.username }}</h2>
-    <a href="{{ url_for('main.admin_dashboard') }}">Quay lại</a>
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn">Quay lại</a>
     <hr>
     {% for msg in messages %}
-    <div style="margin-bottom:15px; padding:10px; border-radius:8px; background: {{ '#e6fffa' if msg.sender=='user' else '#fff5f5' }};">
-        <b>{{ msg.sender | upper }}</b> <small>({{ msg.timestamp.strftime('%H:%M:%S %d/%m') }})</small><br>
-        {{ msg.content | safe }}
+    <div style="margin-bottom:15px; padding:10px; border-radius:8px; background: {{ '#e6fffa' if msg.sender=='user' else '#fff5f5' }}; border:1px solid #ddd;">
+        <b>{{ msg.sender | upper }}</b> 
+        <small style="color:#666;">({{ msg.timestamp.strftime('%H:%M:%S %d/%m') }})</small>
+        <br>
+        <div style="margin-top:5px;">{{ msg.content | safe }}</div>
     </div>
     {% endfor %}
 </div>
