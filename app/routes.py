@@ -7,10 +7,17 @@ from . import db
 from .models import User, Message, VariableLog
 from .forms import LoginForm, UserForm, UploadCSVForm, ChangePasswordForm, ResetPasswordForm
 import openai, csv, io, uuid, time, json, os, traceback
+from datetime import datetime, timedelta # Thêm thư viện xử lý giờ
 
+# --- 1. KHỞI TẠO BLUEPRINT ---
 main = Blueprint('main', __name__)
 
-# --- 2. CÁC HÀM HỖ TRỢ ---
+# --- 2. HÀM HỖ TRỢ THỜI GIAN (GMT+7) ---
+def get_vietnam_time():
+    """Lấy giờ hiện tại theo múi giờ Việt Nam (UTC+7)"""
+    return datetime.utcnow() + timedelta(hours=7)
+
+# --- 3. CÁC HÀM HỖ TRỢ KHÁC ---
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'doc', 'txt'}
 
@@ -84,41 +91,56 @@ def handle_chat_logic(bot_type_check):
 
     if not user_text and not file: return jsonify({'response': ""}), 400
 
-    user_msg = Message(sender='user', content=user_text + file_html, author=current_user, session_id=sess_id)
+    # Lấy giờ VN
+    now_vn = get_vietnam_time()
+
+    # Lưu User Msg (Kèm timestamp VN)
+    user_msg = Message(
+        sender='user', 
+        content=user_text + file_html, 
+        author=current_user, 
+        session_id=sess_id,
+        timestamp=now_vn # Ghi đè giờ hệ thống
+    )
     db.session.add(user_msg)
 
     # Gọi AI
     full_resp = get_assistant_response(user_text + file_msg, bot_type_check)
 
-    # --- LOGIC TÁCH JSON (QUAN TRỌNG) ---
-    ui_text = full_resp # Mặc định là toàn bộ nếu không tìm thấy JSON
+    # Log JSON (Kèm timestamp VN)
+    ui_text = full_resp
     try:
         if "```json" in full_resp:
             parts = full_resp.split("```json")
-            ui_text = parts[0].strip() # Chỉ lấy phần lời thoại
-            
-            # Phần sau là JSON, cần xử lý để lưu DB
-            json_part = parts[1].split("```")[0]
-            # Xóa sạch các ký tự thừa như "LOG_DATA =" nếu có
-            json_str = json_part.replace("LOG_DATA =", "").strip()
-            
+            ui_text = parts[0].strip()
+            json_str = parts[1].split("```")[0].replace("LOG_DATA =", "").strip()
             if json_str:
                 data = json.loads(json_str)
                 for k, v in data.items():
-                    db.session.add(VariableLog(user_id=current_user.id, session_id=sess_id, variable_name=str(k), variable_value=str(v)))
+                    db.session.add(VariableLog(
+                        user_id=current_user.id, 
+                        session_id=sess_id, 
+                        variable_name=str(k), 
+                        variable_value=str(v),
+                        timestamp=now_vn # Ghi đè giờ hệ thống
+                    ))
     except Exception as e:
         print(f"Log Error: {e}")
-        # Nếu lỗi tách JSON, ui_text vẫn giữ nguyên để hiển thị tin nhắn (dù có thể còn dính code)
 
-    # Lưu vào DB: Lưu bản gốc (full_resp) để Admin có thể xem lại log sau này
-    bot_msg = Message(sender='assistant', content=full_resp, author=current_user, session_id=sess_id)
+    # Lưu Bot Msg (Kèm timestamp VN)
+    bot_msg = Message(
+        sender='assistant', 
+        content=full_resp, 
+        author=current_user, 
+        session_id=sess_id,
+        timestamp=now_vn # Ghi đè giờ hệ thống
+    )
     db.session.add(bot_msg)
     db.session.commit()
 
-    # Trả về cho User: CHỈ TRẢ VỀ BẢN SẠCH (ui_text)
     return jsonify({'response': ui_text})
 
-# --- 3. CÁC ROUTE CƠ BẢN ---
+# --- 4. CÁC ROUTE CƠ BẢN ---
 
 @main.route('/')
 def index(): return redirect(url_for('main.login'))
@@ -169,7 +191,13 @@ def render_chat_page(bot_type, bot_name):
     
     hist = Message.query.filter_by(user_id=current_user.id, session_id=sess_id).order_by(Message.timestamp.asc()).all()
     sessions = get_user_sessions()
-    session_list = [{'id': s[0], 'name': f"Hội thoại {s[1].strftime('%d/%m %H:%M')}", 'active': s[0]==sess_id} for s in sessions]
+    
+    # Format lại giờ trong sidebar (nếu cần hiển thị đẹp)
+    session_list = []
+    for s_id, s_time in sessions:
+        # s_time ở đây đã là giờ VN do ta lưu vào DB là giờ VN
+        display_name = s_time.strftime('%d/%m %H:%M') if s_time else "Mới"
+        session_list.append({'id': s_id, 'name': f"Hội thoại {display_name}", 'active': (s_id == sess_id)})
 
     return render_template('chatbot_layout.html', 
                            chat_history=hist, 
@@ -219,7 +247,7 @@ def delete_session(session_id):
 @main.route('/disclaimer')
 def disclaimer(): return render_template('disclaimer.html')
 
-# --- 4. ADMIN DASHBOARD & CSV ---
+# --- 5. ADMIN DASHBOARD ---
 
 @main.route('/admin', methods=['GET'])
 @login_required
@@ -274,15 +302,11 @@ def batch_create_users():
                 
                 r_pass = row[1].strip() if len(row) > 1 and row[1].strip() else "123456"
                 
-                # --- LOGIC MAPPING (FIXED) ---
+                # Mapping Logic (Fixed)
                 raw_type = row[2].strip().lower() 
-                
-                if 'gofai' in raw_type or 'basic' in raw_type:
-                    r_type = 'gofai'
-                elif 'ai' in raw_type or 'coach' in raw_type:
-                    r_type = 'ai'
-                else:
-                    r_type = 'gofai' 
+                if 'gofai' in raw_type or 'basic' in raw_type: r_type = 'gofai'
+                elif 'ai' in raw_type or 'coach' in raw_type: r_type = 'ai'
+                else: r_type = 'gofai'
 
                 if not User.query.filter_by(username=r_user).first():
                     new_user = User(username=r_user, bot_type=r_type)
@@ -307,7 +331,6 @@ def batch_create_users():
 @admin_required
 def delete_selected_users():
     user_ids = request.form.getlist('user_ids')
-    
     if not user_ids:
         flash('Chưa chọn học sinh nào!', 'warning')
         return redirect(url_for('main.admin_dashboard'))
@@ -357,7 +380,8 @@ def reset_student_password(user_id):
 @admin_required
 def view_chat_history(user_id):
     u = User.query.get_or_404(user_id)
-    msgs = Message.query.filter_by(user_id=user_id).order_by(Message.timestamp.asc()).all()
+    # Sắp xếp theo session và thời gian
+    msgs = Message.query.filter_by(user_id=user_id).order_by(Message.session_id, Message.timestamp.asc()).all()
     return render_template('chat_history.html', student=u, messages=msgs)
 
 @main.route('/admin/logs/<int:user_id>')
@@ -365,6 +389,7 @@ def view_chat_history(user_id):
 @admin_required
 def view_variable_logs(user_id):
     u = User.query.get_or_404(user_id)
+    # Sắp xếp log mới nhất lên đầu
     logs = VariableLog.query.filter_by(user_id=user_id).order_by(VariableLog.timestamp.desc()).all()
     return render_template('variable_logs.html', student=u, logs=logs)
 
@@ -373,10 +398,17 @@ def view_variable_logs(user_id):
 @admin_required
 def export_chat_history():
     si = io.StringIO(); cw = csv.writer(si)
-    cw.writerow(['Time','Session','User','Type','Content'])
-    msgs = db.session.query(Message, User).join(User).all()
-    for m, u in msgs: cw.writerow([m.timestamp, m.session_id, u.username, m.sender, m.content])
-    return Response(si.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=data.csv"})
+    cw.writerow(['Time (GMT+7)','Session','User','Type','Content'])
+    
+    # Query tất cả và sắp xếp
+    msgs = db.session.query(Message, User).join(User).order_by(Message.timestamp.desc()).all()
+    
+    for m, u in msgs:
+        # Format thời gian cho đẹp
+        time_str = m.timestamp.strftime('%Y-%m-%d %H:%M:%S') if m.timestamp else ""
+        cw.writerow([time_str, m.session_id, u.username, m.sender, m.content])
+        
+    return Response(si.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=data_export.csv"})
 
 @main.route('/change_password', methods=['GET', 'POST'])
 @login_required
